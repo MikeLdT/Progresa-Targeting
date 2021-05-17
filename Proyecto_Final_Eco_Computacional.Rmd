@@ -1,0 +1,94 @@
+---
+title: "Proyecto Final Eco Computacional"
+author: "Jorge H, Alega G, Adrian M,"
+date: "17/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/tmp')
+```
+
+```{r}
+library(dplyr)
+library(kableExtra)
+library(ggplot2)
+```
+
+Establecer directorio
+```{r }
+ruta_archivos<-"C:/Users/georg/Documents/ITAM/Maestría/2 Semestre/Economía Computacional/Proyecto_Final/Datos_ENIGH/"
+
+
+```
+
+
+### Preparación Base de Datos
+```{r}
+setwd(ruta_archivos)
+
+#Leemos bases de datos
+#concentrado_hogar<-read.csv("concentradohogar.csv")
+#gastos_hogar<-read.csv("gastoshogar.csv")
+gastos_persona<-read.csv("gastospersona.csv")
+hogares<-read.csv("hogares.csv")
+ingresos<-read.csv("ingresos.csv")
+poblacion<-read.csv("poblacion.csv")
+trabajos<-read.csv("trabajos.csv")
+viviendas<-read.csv("viviendas.csv")
+
+
+#Juntamos las bases empleando su identificador
+base<-left_join(viviendas, hogares, by="ï..folioviv")
+
+rm(viviendas, hogares)
+
+base<-base %>% 
+  mutate(id_1=paste0(ï..folioviv,"_",foliohog))
+
+
+#Agregamos Población:
+poblacion<-poblacion %>% 
+  mutate(id_1=paste0(ï..folioviv,"_",foliohog))
+
+base<- left_join(poblacion,base,by="id_1")
+rm(poblacion)
+
+#Agregamos Ingresos
+ingresos<-ingresos %>% 
+  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+base<-base %>% 
+  mutate(id_2=paste0(id_1,"_",numren))
+
+base<- left_join(ingresos,base,by="id_2")
+rm(ingresos)
+
+#Agregamos Gastos persona
+gastos_persona<-gastos_persona %>% 
+  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+
+base<- left_join(gastos_persona,base,by="id_2")
+rm(gastos_persona)
+
+#Agregamos Gastos trabajos
+trabajos<-trabajos %>% 
+  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+
+base<- left_join(trabajos,base,by="id_2")
+rm(trabajos)
+
+#Quitamos Identificadores de la base:
+base<-base %>% 
+  select(-id_2,-id_1, -starts_with("ï..folioviv"))
+
+saveRDS(base,"base")
+
+
+```
+
+Leemos la Base de datos preparada:
+```{r}
+readRDS("base")
+```
+
