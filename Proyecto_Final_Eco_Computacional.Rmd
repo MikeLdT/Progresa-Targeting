@@ -18,8 +18,7 @@ library(ggplot2)
 
 Establecer directorio
 ```{r }
-ruta_archivos<-"C:/Users/georg/Documents/ITAM/Maestría/2 Semestre/Economía Computacional/Proyecto_Final/Datos_ENIGH/"
-
+ruta_archivos<-"/Users/arleenholden/Documents/GitHub/Progresa-Targeting/"
 
 ```
 
@@ -89,6 +88,176 @@ saveRDS(base,"base")
 
 Leemos la Base de datos preparada:
 ```{r}
-readRDS("base")
+setwd(ruta_archivos)
+base<-readRDS("base")
 ```
+Estadísticas Descriptivas: 
+```{r}
+#Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
+#1 es Sí 
+#2 es no
+base_alim1<-base%>%
+  group_by(acc_alim1)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         preocupacion_comida=ifelse(acc_alim1==1,"Sí",ifelse(acc_alim1==2,"No","NA")))%>%
+  dplyr::select(preocupacion_comida,total,porcentaje)
+
+kable(base_alim1,caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+base<-base%>%
+  mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
+
+```
+
+
+
+```{r}
+#Informalidad se va a sacar a través de 5 distintas preguntas (ver paper Finance and Employment Formalization: Evidence
+#from Mexico's Income-Expenditure Surveys)
+
+#Contrato
+#1 es Sí 
+#2 es no
+base_contrato<-base%>%
+  group_by(contrato)%>%
+  summarise(total=n())%>% 
+  mutate(porcentaje=total/sum(total),
+         Contrato=ifelse(contrato==1,"Sí",ifelse(contrato==2,"No","NA")))%>%
+  dplyr::select(Contrato,total,porcentaje)
+
+kable(base_contrato,caption="Existencia de un contrato laboral por escrito.",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+#Como le pagaron (#9)
+#1 recibe pago
+#2 trabajador sin pago en un negocio del hogar 
+#3 trabajador sin pago en un negocio que no es del hogar
+base_pago<-base%>%
+  mutate(Pago=ifelse(pago==1,"Sí",ifelse(pago==2|3,"No","NA")))%>%
+  group_by(Pago)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total))%>%
+  dplyr::select(Pago,total,porcentaje)
+
+kable(base_pago,caption="Como le pagaron: Recibe un pago o no (Es un trabajador(a) sin pago en un negocio del hogar o 
+      Es un trabajador(a) sin pago en un negocio que no es del hogar).",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+#Recibe prestaciones 
+base_prestaciones<-base%>%
+  mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
+                             |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
+                             |pres_11==11|pres_12==12|pres_13==13|pres_14==14
+                             |pres_15==15|pres_16==16|pres_17==17|pres_18==18
+                             |pres_19==19,1,2))%>%
+  dplyr::select(prestaciones,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  mutate(prestaciones=ifelse(prestaciones==1,"Sí","No"))%>%
+  group_by(prestaciones)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total))%>%
+  dplyr::select(prestaciones,total,porcentaje)
+
+
+kable(base_prestaciones,caption="En el trabajo que tuvo le dieron alguna prestación.", digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")%>%
+  footnote("Prestaciones: Incapacidad médica, aguinaldo, vacaciones, reparto de utilidades, crédito de vivienda, guarderías, cuidados maternos o paternos, SAR o AFORE, seguro de vida, préstamos, prima vacacional, apoyos educativos, servicio de comedor, FONACOT, despensas, ayuda a pago de servicios, pensión de invalidez, pensión por fallecimiento u otras prestaciones.")
+
+base_2<-base%>% 
+  mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
+                             |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
+                             |pres_11==11|pres_12==12|pres_13==13|pres_14==14
+                             |pres_15==15|pres_16==16|pres_17==17|pres_18==18
+                             |pres_19==19,1,2))%>%
+  dplyr::select(prestaciones,factor,contrato,pago)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  mutate(informal=ifelse(contrato==2|pago==2|pago==3|prestaciones!=1,1,0))
+
+base_informalidad<-base_2%>%
+  group_by(informal)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         informal=ifelse(informal==1,"Sí",ifelse(informal==0,"No","NA")))%>%
+  dplyr::select(informal,total,porcentaje)
+
+kable(base_informalidad,caption="El individuo trabaja en el sector informal",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+base$informal<-base_2$informal
+```
+
+
+
+```{r}
+#La probabilidad de los integrantes terminaran la secundaria 
+
+#Nivel aprob
+#3 o más es educación mayor o igual a secundaria
+
+base_educacion<-base%>%
+  mutate(mayor_secundaria=ifelse(nivelaprob>=3,1,2))%>%
+  group_by(mayor_secundaria)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         mayor_secundaria=ifelse(mayor_secundaria==1,"Sí","No"))%>%
+  dplyr::select(mayor_secundaria,total,porcentaje)
+
+kable(base_educacion,caption="Integrantes que terminaron la secundaria.",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+base<-base%>%
+  mutate(menor_secundaria=ifelse(nivelaprob<=3,1,0))
+```
+
+
+```{r}
+#Porcentaje de gente en el programa prospera 
+
+base_prospera<-base%>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|inst==12|clave.y=="P042",1,2))%>%
+  dplyr::select(Prospera,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  group_by(Prospera)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         Prospera=ifelse(Prospera==1,"Sí","No"))%>%
+  dplyr::select(Prospera,total,porcentaje)
+
+kable(base_prospera,caption="Individuos en el programa PROSPERA",digits=3)%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+
+base_prospera_2<-base%>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|inst==12|clave.y=="P042",1,2))%>%
+  dplyr::select(Prospera,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))
+
+base$prospera<-base_prospera_2$Prospera
+```
+
+```{r}
+#La variable preocupación_comida indica si el individuo ha tenido está preocupación (1 sí y 0 no)
+#La variable informal indica si el individuo trabaja en el sector informal (1 sí y 0 no)
+#La variable menor_secundaria indica si el individuo tiene menor educación secundaria (1 sí y 0 no)
+#La variable prospera indica si el individuo está en prospera o no (1 sí y 0 no)
+
+base_grafica<-base%>%
+  mutate(preocupacion_comida=as.numeric(preocupacion_comida),
+    total_carencias=informal+preocupacion_comida+menor_secundaria)
+
+base_grafica_2<-base_grafica%>%
+  group_by(total_carencias, prospera)%>%
+  summarize(total=sum(factor,na.rm=T))%>%
+  filter(!is.na(total_carencias))%>%
+  ungroup()
+
+
+p<-ggplot(data=base_grafica_2, aes(x=as.factor(total_carencias), y=total, fill=as.factor(prospera))) +
+geom_bar(stat="identity", color="black", position=position_dodge())+
+  theme_minimal()+
+  scale_fill_manual(values=c("steelblue", "grey"))
+```
+
 
