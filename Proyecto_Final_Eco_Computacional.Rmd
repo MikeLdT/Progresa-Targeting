@@ -14,23 +14,26 @@ knitr::opts_knit$set(root.dir = '/tmp')
 library(dplyr)
 library(kableExtra)
 library(ggplot2)
+library(tidyr)
 ```
 
 Establecer directorio
 ```{r }
-ruta_archivos<-"/Users/arleenholden/Documents/GitHub/Progresa-Targeting/"
+ruta_archivos<-"D:/Documentos 2/Eco_Computacional/Progresa-Targeting"
 
 ```
 
 
 ### Preparación Base de Datos
 ```{r}
-setwd(ruta_archivos)
+#WD Jorge (con bases de la ENIGH)
+setwd("C:/Users/georg/Documents/ITAM/Maestría/2 Semestre/Economía Computacional/Proyecto_Final/Datos_ENIGH")
+
 
 #Leemos bases de datos
 #concentrado_hogar<-read.csv("concentradohogar.csv")
 #gastos_hogar<-read.csv("gastoshogar.csv")
-gastos_persona<-read.csv("gastospersona.csv")
+#gastos_persona<-read.csv("gastospersona.csv")
 hogares<-read.csv("hogares.csv")
 ingresos<-read.csv("ingresos.csv")
 poblacion<-read.csv("poblacion.csv")
@@ -54,43 +57,48 @@ poblacion<-poblacion %>%
 base<- left_join(poblacion,base,by="id_1")
 rm(poblacion)
 
-#Agregamos Ingresos
+#Agregamos Ingresos sólo el ingreso trimestral individual
 ingresos<-ingresos %>% 
-  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren),
+         ing_pros=ifelse(clave=="P042",1,0)) %>% 
+  group_by(id_2) %>% 
+  summarise(ing_tri_tot=sum(ing_tri, na.rm = TRUE),
+            ing_prospera=sum(ing_pros,na.rm = TRUE))
+
 base<-base %>% 
   mutate(id_2=paste0(id_1,"_",numren))
 
-base<- left_join(ingresos,base,by="id_2")
+base<- left_join(base,ingresos,by="id_2")
 rm(ingresos)
 
 #Agregamos Gastos persona
-gastos_persona<-gastos_persona %>% 
-  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+#gastos_persona<-gastos_persona %>% 
+  #mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
 
-base<- left_join(gastos_persona,base,by="id_2")
-rm(gastos_persona)
+#base<- left_join(gastos_persona,base,by="id_2")
+#rm(gastos_persona)
 
-#Agregamos Gastos trabajos
+#Agregamos Trabajos (sólo con el principal)
 trabajos<-trabajos %>% 
-  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren))
+  mutate(id_2=paste0(ï..folioviv,"_",foliohog,"_",numren)) %>% 
+  filter(id_trabajo==1)
 
-base<- left_join(trabajos,base,by="id_2")
+base<- left_join(base, trabajos,by="id_2")
 rm(trabajos)
 
 #Quitamos Identificadores de la base:
 base<-base %>% 
-  select(-id_2,-id_1, -starts_with("ï..folioviv"))
+  select(-id_1, -starts_with("ï..folioviv"))
 
-saveRDS(base,"base")
+#saveRDS(base,"base")
 
 
 ```
 
-Leemos la Base de datos preparada:
-```{r}
-setwd(ruta_archivos)
-base<-readRDS("base")
-```
+
+
+
+
 Estadísticas Descriptivas: 
 ```{r}
 #Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
@@ -106,8 +114,12 @@ base_alim1<-base%>%
 kable(base_alim1,caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.",digits=3)%>%
   kable_classic(full_width = F, html_font = "Cambria")
 
+rm(base_alim1)
+
 base<-base%>%
   mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
+
+
 
 ```
 
@@ -185,7 +197,11 @@ base_informalidad<-base_2%>%
 kable(base_informalidad,caption="El individuo trabaja en el sector informal",digits=3)%>%
   kable_classic(full_width = F, html_font = "Cambria")
 
+rm(base_contrato, base_pago, base_prestaciones, base_informalidad)
+
 base$informal<-base_2$informal
+
+
 ```
 
 
@@ -207,6 +223,8 @@ base_educacion<-base%>%
 kable(base_educacion,caption="Integrantes que terminaron la secundaria.",digits=3)%>%
   kable_classic(full_width = F, html_font = "Cambria")
 
+rm(base_educacion)
+
 base<-base%>%
   mutate(menor_secundaria=ifelse(nivelaprob<=3,1,0))
 ```
@@ -216,7 +234,7 @@ base<-base%>%
 #Porcentaje de gente en el programa prospera 
 
 base_prospera<-base%>%
-  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|inst==12|clave.y=="P042",1,2))%>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|ing_prospera>0,1,2))%>%
   dplyr::select(Prospera,factor)%>%
   mutate_all(~replace(., is.na(.), 0))%>%
   group_by(Prospera)%>%
@@ -230,7 +248,7 @@ kable(base_prospera,caption="Individuos en el programa PROSPERA",digits=3)%>%
 
 
 base_prospera_2<-base%>%
-  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|inst==12|clave.y=="P042",1,2))%>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|ing_prospera>0,1,2))%>%
   dplyr::select(Prospera,factor)%>%
   mutate_all(~replace(., is.na(.), 0))
 
@@ -261,3 +279,17 @@ geom_bar(stat="identity", color="black", position=position_dodge())+
 ```
 
 
+Vamos a eliminar las variables empleadas para construir las variables dependientes, ya que si no saldrán correlacionadas con estas en los modelos.
+
+```{r}
+base<-base %>% 
+  select(-acc_alim1,-contrato,-pago,-pres_1,-pres_2,-pres_3,-pres_4,-pres_5,-pres_6,-pres_7,-pres_8,-pres_9,-pres_10,-pres_11,-pres_12,-pres_13,-pres_14,-pres_15,-pres_16,-pres_17,-pres_18,-pres_19,-nivelaprob,-otorg_b,inst_5, -servmed_4, -inst_1, -inst_2, -ing_prospera )
+
+
+```
+
+Leemos la Base de datos preparada:
+```{r}
+setwd(ruta_archivos)
+saveRDS(base,"base")
+```
