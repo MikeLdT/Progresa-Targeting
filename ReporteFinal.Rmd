@@ -1,0 +1,148 @@
+---
+title: "Evaluación de Impacto del Programa Prospera"
+author: "Equipo 6: Adrián M., Alexa G. Jorge H., Miguel L., Carlos L."
+date: "28/5/2021"
+
+fontsize: 10 pt
+output:
+  prettydoc::html_pretty:
+  theme: cayman
+  highlight: github
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Estrategia de Focalización - Programa Prospera
+
+*Objetivo:* El presente documento realiza un análisis de impacto del programa PROSPERA utilizando herramientas de aprendizaje estadistico para identificar los hogares donde el plan fue exitoso. Con esto en mente, nuestra recomendación es focalizar el programa a un grupo de ____ hogares para los cuales identificamos un impacto total de ______ en comparación con la manera en que fue diseñado originalmente, lo cual representa un impacto promedio por hogar de:_____________
+
+## Introducción
+
+PROSPERA fue un programa de la Secretaría de Desarrollo Social de 2014 a 2018, el cual otorgó recursos a casi 7 millones de familias mexicanas para fortalecer su alimentación, salud y educación; asimismo tenía la intención de vincular a las personas beneficiarias con proyectos productivos, opciones laborales y servicios financieros. El programa contaba con el respaldo y la experiencia de otros dos planes implementados por el gobierno mexicano: El Programa de Educación, Salud y Alimentación (Progresa) que inició en agosto de 1997 y cubrió hasta 2.4 millones de hogares para 2002 y el programa Oportunidades que ocupó el lugar de Progresa en 2002 y terminó operaciones en 2013 aumentando su cobertura a los 32 estados del país y 4.2 millones de hogares atendidos. 
+
+El 4 de septiembre de 2014, Oportunidades se transformó en "PROSPERA - Programa de Inclusión Social" con la intención de articular y coordinar la oferta institucional de programas y acciones de política social dirigidas a la población en situación de pobreza. En su operación, este programa consistía en diversos apoyos económicos directos condicionados (conocidos en inglés como *conditional cash transfers*) los cuales eran otorgados generalmente a las madres de familia por medio de tarjetas bancarias. Para que un hogar pudiera ser beneficiario del programa, previamente se identificaban a aquellos que se encontraban en situación de vulnerabilidad, por medio de una encuesta de características socioeconómicas y demográficas, llamada oficialmente Cuestionario Único de Información Socieconómica (CUIS) ejecutado y diseñado por la Secretaría de Desarrollo Social (SEDESOL). Idealmente, la población objetivo consitía en aquellos hogares con un ingreso per cápita menor a la linea de bienestar mínimo (LBM), y aquellos que ya estaban dentro del programa pero permanecían abajo de la Línea de Verificaciones Permamentes de Condiciones Socioeconómicas (LVPCS) siempre y cuando tuvieran un integrante menor de 22 años asistiendo a la escuela. 
+
+El programa contaba con metas, llamados en sus proyectos "ámbitos de beneficio", muy amplias, las cuales abarcaban: a) Alimentación, b) Educación, c) Salud, d) Inclusión laboral, e) Inclusión Productiva, f) Inclusión Financiera, g) Inclusión Social, h) Participación social y i) Derecho de Audiencia. Los apoyos se ramificaban en al menos 5 tipos distintos: 1) Apoyo Alimentario, 2) Apoyo alimentario complementario, 3) Apoyo para Becas Educativas, 4) Apoyo para útiles escolares y 5) Apoyo para adultos mayores. Estos eran otorgados por medio de transferencias monetarias bimestrales (depósito a la tarjeta) o en apoyos en especie correspondientes a los componentes de alimentación, salud y educación, los cuales usualmente consistían en suplementos alimenticios y útiles escolares. Desde sus antecesores, Progresa y Oportunidades, en salud y educación a los beneficiarios se les exige el cumplimiento de corresponsabilidades incluyendo asistir a consultas y talleres programados e inscribirse y asisistir a la escuela. En el año de 2014, Prospera atendió a 6,129,125 de familias y su presupuesto asignado para el ejercicio de 2015 rozó los 75 millones de pesos equivalentes al 0.4% del PIB. A partir del año fiscal de 2019, Prospera fue sustituido por el Programa de Becas para el Bienestar Benito Juárez con distintas reglas de operación y objetivos.
+
+## Evaluación de Impacto 
+
+Para el presente análisis buscamos focalizar los recursos a aquellos hogares en los cuales el programa Prospera haya tenido más éxito. Para evaluar a la población objetivo utilizamos los datos de la Encuesta Nacional de Ingresos y Gastos (ENIGH) del año 2018. Esta encuesta, realizada de manera bianual por el INEGI, registra de manera detallada los montos, procedencia y distribución de los ingresos en los hogares. En ella, por medio de diversas bases de datos, se identifica lo que los mexicanos perciben como salario, prestaciones, transferencias y su pertenencia a diversos programas de apoyo y cobertura gubernamental. Adicionalmente, también se hacen preguntas de sus condiciones de vivienda, activos con los que cuenta y situaciones de carencia y vulnerabilidad sanitaria, económica o física.
+
+En nuestro análisis definimos tres metas sobre las cuales evaluamos la relevancia de Prospera:
+1) Si en alguna ocasión el hogar se preocupó porque faltara comida.
+2) La probabilidad de que los miembros del hogar tuvieran un empleo informal.
+3) La probabilidad de que los integrantes terminaran la secundaria. 
+
+Estos tres puntos son relevantes puesto que forman parte de los objetivos generales que buscaba corregir Prospera, particularmente: 1) Alimentación, 2) Inclusión Laboral y 3) Educación. 
+
+## Preparación de la Base
+
+Una vez que identificamos las tres variables dependientes (objetivo) sobre las cuales evaluamos el éxito (o fracaso) de PROSPERA, es necesario extraer la información de cada uno de los individuos del estudio. La construcción de la matriz de  características está lejos de ser trivial dado que requiere de todo un trabajo de limpieza en la base. Esto es particularmente problemático en nuestro contexto dado que la fuente de la cual obtuvimos la información fue la Encuesta Nacional de Ingresos y Gastos (ENIGH) del 2018. "Tras bambalinas", el paso previo a la estimación de los modelos consistió en unir al menos 5 bases distintas: 1) que lograran explicar algo de las personas (i.e. que fueran relevantes para el estudio) y 2) que quedaran homologadas para poder ser utilizadas por el algoritmo.
+
+Las preguntas de cada una de las bases (o cuestionarios según el INEGI) capturan diversas dimensiones que definen a los individuos que participan en la encuesta. Por ejemplo, en el caso de vivienda extraemos información sobre las características físicas de su hogar como el material de los pisos, techos, número de cuartos, acceso a servicios básicos, tenencia de inmuebles, entre otros. En el módulo del hogar identificamos los activos a los que tiene acceso (electrodomésticos, servicio de telefonía, internet, etc.) pero también preguntas de acceso alimentario tanto del número de comidas diarias como la calidad de los mismos. En el cuestionario de población extraemos información demográfica, si existe algún problema de discapacidad, nivel educativo, afiliaciones de seguridad social, actividades de su vida cotidiana y asignación de su tiempo. Por último, en los módulos de "ingresos" y "trabajos" extraemos todo lo relativo a su posición en el mercado laboral, salarios, prestaciones, transferencias, créditos, horas trabajadas y acceso al sistema financiero.  
+
+Después de juntar toda la información, inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo.\footnote{En nuestro código documentamos, en la medida de lo posible, todas las variables que provocaron problema de missing values.}
+
+Con la información de los hogares extraida de la ENIGH, podemos identificar la proporción de mexicanos que sufren de estas carencias, quiénes de ellos son beneficiarios de PROSPERA y quiénes pertenecen a un grupo de situación vulnerable (población femenina e indígena).
+
+## Estadísticas Descriptivas 
+
+Tomamos en cuenta diversas variables de interés para identificar su relación con el programa Prospera. En todos los casos, empleamos el factor de expansión que venía incluido en la base de datos a nivel población, para conocer tanto el número de personas como el porcentaje a nivel nacional que sufre alguna de las carencias de interés o que es beneficiario del programa.
+
+En primer lugar, nos enfocamos en la carencia alimentaria. En la ENIGH se le pregunta a los individuos si se vieron en la preocupación de que la comida se acabara alguna vez por falta de dinero. 
+
+```{r, message=FALSE, warning=FALSE}
+#Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
+#1 es Sí 
+#2 es no
+ruta_archivos<-"C:/Users/Lenovo/Downloads/base"
+base <- readRDS(ruta_archivos)
+
+base_alim1<-base%>%
+  group_by(acc_alim1)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         preocupacion_comida=ifelse(acc_alim1==1,"Sí",ifelse(acc_alim1==2,"No","NA")))%>%
+  dplyr::select(preocupacion_comida,total,porcentaje) %>%
+  slice(1:2)
+
+kable(base_alim1, align = c("c", "c", "c"), 
+      caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.", digits=3, 
+      col.names = linebreak(c("Respuesta", "Población", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+
+base<-base%>%
+  mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
+
+```
+
+Tomando esta pregunta como proxy de la carencia alimentaria, notamos que en México, un total de `r base_alim1$total[1]` de personas tienen esta carencia, es decir un `r base_alim1$porcentaje[1]` de la población.
+
+Por otro lado, estamos interesados en la relación entre pertenecer al programa y laborar en el sector informal. Para identificar si un individuo labora en la informalidad, no basamos en el paper "Finance and Employment Formalization: Evidence from Mexico's Income-Expenditure Surveys", de Bazdresch y Werner (2011). Estos autores identificaron a los integrantes de la informalidad por medio de algunas características particulares:
+- Si no existe un contrato laboral por escrito con el trabajador.
+- El trabajador no recibe pago  y trabaja en un negocio del hogar, o es un trabajador(a) sin pago en un negocio que no es del hogar.
+- El trabajador no percibe prestaciones, como incapacidad médica, aguinaldo, vacaciones, reparto de utilidades, crédito de vivienda, guarderías, cuidados maternos o paternos, SAR o AFORE, seguro de vida, préstamos, prima vacacional, apoyos educativos, servicio de comedor, FONACOT, despensas, ayuda a pago de servicios, pensión de invalidez, pensión por fallecimiento u otras prestaciones.
+
+Para propósitos de nuestro ejercicio, los informales serán aquellos que cumplan con al menos una de estas condiciones. 
+
+```{r}
+rm(base_alim1)
+
+#Informalidad se va a sacar a través de 5 distintas preguntas (ver paper Finance and Employment Formalization: Evidence
+#from Mexico's Income-Expenditure Surveys)
+
+#1) Contrato - ¿Existe un contrato laboral por escrito con el trabajador?
+#1 es Sí 
+#2 es no
+base_contrato<-base%>%
+  group_by(contrato)%>%
+  summarise(total=n())%>% 
+  mutate(porcentaje=total/sum(total),
+         Contrato=ifelse(contrato==1,"Sí",ifelse(contrato==2,"No","NA")))%>%
+  dplyr::select(Contrato,total,porcentaje)
+
+kable(base_contrato, align = c("c", "c", "c"), caption="Existencia de un contrato laboral por escrito.", digits=3, col.names = linebreak(c("Contrato", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+```{r}
+#2) Como le pagaron? (#9)
+#1 recibe pago
+#2 trabajador sin pago en un negocio del hogar 
+#3 trabajador sin pago en un negocio que no es del hogar
+base_pago<-base%>%
+  mutate(Pago=ifelse(pago==1,"Sí",ifelse(pago==2|3,"No","NA")))%>%
+  group_by(Pago)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total))%>%
+  dplyr::select(Pago,total,porcentaje)
+
+kable(base_pago, align = c("c", "c", "c"), caption="Cómo le pagaron: ¿Recibe un pago o no?",digits=3, col.names = linebreak(c("Pago", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Las opciones de respuesta son: a) Sin Pago en un negocio del hogar ó b) Sin pago en un negocio fuera del hogar. Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+```{r}
+
+```
+
+
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
