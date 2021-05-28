@@ -208,6 +208,44 @@ data <- data %>%
 
 
 # Convertir variables factores a dummies?
+######################### 
+# Convertir a numeric y char
+
+a <- lapply(data, class)
+
+#usar fast dummies para sexo
+data <- data %>% select(-foliohog.x,-contains("id")) %>% 
+  fastDummies::dummy_rows()
+data$estim_pago <- as.numeric(data$estim_pago)
+data$edad <- as.numeric(data$edad)
+data$ss_aa <- as.numeric(data$ss_aa)
+data$ss_mm <- as.numeric(data$ss_mm)
+data <- data %>% 
+  mutate(across(starts_with("hor_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("tsalud1_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("est_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("ing_tri"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("htrab_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("hijos_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("propspera"),~as.numeric(.)))
+data <- data %>% 
+  mutate(across(starts_with("min_"),~as.numeric(.)))
+data$mm_lug <- as.numeric(data$mm_lug)
+data$hh_lug <- as.numeric(data$hh_lug)
+data$mm_esp <- as.numeric(data$mm_esp)
+data$hh_esp <- as.numeric(data$hh_esp)
+data <- data %>% 
+  mutate(across(starts_with("hijos_"),~as.numeric(.))) %>% 
+  mutate(across(starts_with("num_"),~as.numeric(.)))
+data$antiguedad <- as.numeric(data$antiguedad)
+data$num_cuarto <- as.numeric(data$num_cuarto)
+data$cuart_dorm <- as.numeric(data$cuart_dorm)
+data$num_trabaj <- as.numeric(data$num_trabaj)
+data$renta <- as.numeric(data$renta)
+
+
+
+
 
 
 ###############################################################################
@@ -231,13 +269,10 @@ data_entrenamiento <- data %>%
 data_validacion <- data %>% 
   filter(tratamiento == 1)
 
-# Undersampling
-UNDER <- recipe(churn ~., data = data_entrenamiento) %>%
-  step_meanimpute(all_predictors()) %>%
-  step_downsample(, seed = 123) %>%
-  prep()
 
-under_training_set <- bake(UNDER, new_data = NULL) # es el nuevo training balanceado con undersampling
+  
+
+  
 
 
 
