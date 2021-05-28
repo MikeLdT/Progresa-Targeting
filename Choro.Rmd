@@ -1,0 +1,44 @@
+---
+title: "Choro"
+author: "Carlos López de la Cerda"
+date: "27/5/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Estrategia de Focalización - Programa Prospera
+
+*Objetivo:* El presente documento realiza un análisis de impacto del programa PROSPERA utilizando herramientas de aprendizaje estadistico para identificar los hogares donde el plan fue exitoso. Con esto en mente, nuestra recomendación es focalizar el programa a un grupo de ____ hogares para los cuales identificamos un impacto total de ______ en comparación con la manera en que fue diseñado originalmente, lo cual representa un impacto promedio por hogar de:_____________
+
+## Introducción
+
+PROSPERA fue un programa de la Secretaría de Desarrollo Social de 2014 a 2018, el cual otorgó recursos a casi 7 millones de familias mexicanas para fortalecer su alimentación, salud y educación; asimismo tenía la intención de vincular a las personas beneficiarias con proyectos productivos, opciones laborales y servicios financieros. El programa contaba con el respaldo y la experiencia de otros dos planes implementados por el gobierno mexicano: El Programa de Educación, Salud y Alimentación (Progresa) que inició en agosto de 1997 y cubrió hasta 2.4 millones de hogares para 2002 y el programa Oportunidades que ocupó el lugar de Progresa en 2002 y terminó operaciones en 2013 aumentando su cobertura a los 32 estados del país y 4.2 millones de hogares atendidos. 
+
+El 4 de septiembre de 2014, Oportunidades se transformó en "PROSPERA - Programa de Inclusión Social" con la intención de articular y coordinar la oferta institucional de programas y acciones de política social dirigidas a la población en situación de pobreza. En su operación, este programa consistía en diversos apoyos económicos directos condicionados (conocidos en inglés como *conditional cash transfers*) los cuales eran otorgados generalmente a las madres de familia por medio de tarjetas bancarias. Para que un hogar pudiera ser beneficiario del programa, previamente se identificaban a aquellos que se encontraban en situación de vulnerabilidad, por medio de una encuesta de características socioeconómicas y demográficas, llamada oficialmente Cuestionario Único de Información Socieconómica (CUIS) ejecutado y diseñado por la Secretaría de Desarrollo Social (SEDESOL). Idealmente, la población objetivo consitía en aquellos hogares con un ingreso per cápita menor a la linea de bienestar mínimo (LBM), y aquellos que ya estaban dentro del programa pero permanecían abajo de la Línea de Verificaciones Permamentes de Condiciones Socioeconómicas (LVPCS) siempre y cuando tuvieran un integrante menor de 22 años asistiendo a la escuela. 
+
+El programa contaba con metas, llamados en sus proyectos "ámbitos de beneficio", muy amplias, las cuales abarcaban: a) Alimentación, b) Educación, c) Salud, d) Inclusión laboral, e) Inclusión Productiva, f) Inclusión Financiera, g) Inclusión Social, h) Participación social y i) Derecho de Audiencia. Los apoyos se ramificaban en al menos 5 tipos distintos: 1) Apoyo Alimentario, 2) Apoyo alimentario complementario, 3) Apoyo para Becas Educativas, 4) Apoyo para útiles escolares y 5) Apoyo para adultos mayores. Estos eran otorgados por medio de transferencias monetarias bimestrales (depósito a la tarjeta) o en apoyos en especie correspondientes a los componentes de alimentación, salud y educación, los cuales usualmente consistían en suplementos alimenticios y útiles escolares. Desde sus antecesores, Progresa y Oportunidades, en salud y educación a los beneficiarios se les exige el cumplimiento de corresponsabilidades incluyendo asistir a consultas y talleres programados e inscribirse y asisistir a la escuela. En el año de 2014, Prospera atendió a 6,129,125 de familias y su presupuesto asignado para el ejercicio de 2015 rozó los 75 millones de pesos equivalentes al 0.4% del PIB. A partir del año fiscal de 2019, Prospera fue sustituido por el Programa de Becas para el Bienestar Benito Juárez con distintas reglas de operación y objetivos.
+
+## Evaluación de Impacto 
+
+Para el presente análisis buscamos focalizar los recursos a aquellos hogares en los cuales el programa Prospera haya tenido más éxito. Para evaluar a la población objetivo utilizamos los datos de la Encuesta Nacional de Ingresos y Gastos (ENIGH) del año 2018. Esta encuesta, realizada de manera bianual por el INEGI, registra de manera detallada los montos, procedencia y distribución de los ingresos en los hogares, En ella, por medio de diversas bases de datos, se identifica lo que los mexicanos perciben como salario, prestaciones, transferencias y su pertenencia a diversos programas de apoyo y cobertura gubernamental. Adicionalmente también se hacen preguntas de sus condiciones de vivienda, activos con los que cuenta y situaciones de carencia y vulnerabilidad sanitaria, económica o física.
+
+En nuestro análisis definimos tres metas sobre las cuales evaluamos la relevancia de Prospera:
+1) Si en alguna ocasión el hogar se preocupó porque faltara comida.
+2) La probabilidad de que los miembros del hogar tuvieran un empleo informal.
+3) La probabilidad de que los integrantes terminaran la secundaria. 
+
+Estos tres puntos son relevantes puesto que forman parte de los objetivos generales que buscaba corregir Prospera, particularmente: 1) Alimentación, 2) Inclusión Laboral y 3) Educación. 
+
+## Modelo - Algoritmo 
+
+Para la evaluación del Programa implementamos un algoritmo de aprendizaje estadístico **causal** el cual nos permite unir las herramientas empleadas para bases de datos de alta dimensionalidad con el marco de referencia y las interpretaciones de la inferencia causal. De esta manera es posible explicar el efecto que provoca cierto programa implementado sobre cierta variable determinada, manteniendo **todo lo demás constante**.
+
+En otras palabras, el objetivo final es interpretar cómo cambian las diferentes metas establecidas cuando entra cierto programa en una población objetivo en determinado tiempo. Para conseguir esto, es necesario que de manera estadística logremos aislar la pertenencia al programa Prospera de todos aquellos factores adicionales que puedan interferir tanto en la manera en como es asignado el programa como en cada una de nuestras tres variables de respuesta: 1) Carencia Alimentaria, 2) Inclusión al mercado laboral formal y 3) La probabilidad de terminar la secundaria. De esta manera buscamos obtener resultados causales que logren identificar únicamente los beneficios. 
+
+Parte de los desafíos consiste en crear grupos *comparables* para poder ver las mejoras que genera Prospera. Esto conlleva que se cumplan algunos supuestos tales como: asignación individual, esto es, que no haya contaminación entre grupos; asignación probabilística, o que cada individuo tenga una probabilidad de pertenencer a los grupos de tratamiento; y por último que la asignación sea independiente a las características de los usuarios.
+
+El modelo a implementar es el Causal Forest propuesto por Athey y Wager (2018) que permite 
+
