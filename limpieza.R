@@ -8,7 +8,7 @@ library(fastDummies)
 library(tidymodels)
 
 # Directorio
-setwd("/Users/adrian_martinez/Dropbox/Maestría/Maestría Clases/Segundo_Semestre/Proyecto_Final_Eco_Compu/Progresa-Targeting")
+#setwd("/Users/adrian_martinez/Dropbox/Maestría/Maestría Clases/Segundo_Semestre/Proyecto_Final_Eco_Compu/Progresa-Targeting")
 
 # Read data
 data <- readRDS("./base")
@@ -198,7 +198,13 @@ data <- data %>%
 data <- data %>% 
   select(-numren.x, -numren.y, -numren.y_missing, -parentesco, -madre_hog, 
          -madre_id, -padre_hog, -padre_id, -conyuge_id, -prob_anio, -prob_mes,
-         )
+  )
+
+data <- data %>% 
+  mutate_all(funs(gsub("&", "0", .))) 
+
+
+
 
 
 # Convertir variables factores a dummies?
