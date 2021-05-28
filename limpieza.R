@@ -5,6 +5,7 @@ library(RCT)
 library(purrr)
 library(tidyr)
 library(fastDummies)
+library(tidymodels)
 
 # Directorio
 setwd("/Users/adrian_martinez/Dropbox/Maestría/Maestría Clases/Segundo_Semestre/Proyecto_Final_Eco_Compu/Progresa-Targeting")
@@ -21,7 +22,7 @@ missings <- map_dbl(data %>% select_all(),
 missings <- data.frame("pct_miss" = missings, 
                           "variable" = names(missings)) 
 missings <- missings %>% 
-  arrange(variable)
+  arrange(-pct_miss)
 
 # Quitar variables que tienen más de 99 porciento de missing values
 # remove <- missings %>% 
@@ -138,15 +139,9 @@ data <- data %>%
 data <- data %>% 
   mutate(across(starts_with("inst_"), ~ replace_na(., 0)))
 
-data_aux <- map_df(colnames(data)[grepl("noatenc_", colnames(data))], function(x){
-  data %>% 
-    mutate({{x}} = if_else(is.na(prob_sal), replace_na({{x}}, "No Aplica"),
-                           if_else(is.na({{x}}), 0, {{x}})))
-}
 
 data <- data %>% 
-  mutate(across(starts_with("noatenc_"), ~ if_else(is.na(prob_sal), replace_na(., "No Aplica"),
-                                                   if_else(is.na(.), 0))))
+  mutate(across(starts_with("noatenc_"), ~ replace_na(., "No aplica")))
 
 data <- data %>% 
   mutate(across(starts_with("norecib_"), ~ replace_na(., "No Aplica")))
@@ -157,20 +152,65 @@ data <- data %>%
 data <- data %>% 
   mutate(across(starts_with("redsoc_"), ~ replace_na(., 0)))
 
-# Variables importantes que debemos escoger qué hacer con los missing values
-# est_trans, cambiar por dummies las de habito_1,2,3,4,5,6
-# lo ismo que habito para er_... 
-# Las variables que tienen "num" como num_refri tienen NA en los ceros
+data <- data %>% 
+  select(-starts_with("sermed"))
 
-# Quitar variables de...
-# dicon, licon 
+data <- data %>% 
+  select(-starts_with("razon"), -starts_with("tipoact"), -starts_with("servmed"))
+
+# Análisis de variables "missing"
+data <- data %>% 
+  select(-otro_pago, -hablaesp, -tiene_c, ) %>% 
+  mutate(lenguaind = if_else(is.na(lenguaind), 0, 1), 
+         pago_viv = if_else(is.na(pago_viv), 0, as.double(pago_viv)))
+
+missings <- map_dbl(data %>% select_all(), 
+                    ~100*sum(is.na(.)/nrow(data)))
+
+(missings <- missings[missings>0])
+missings <- data.frame("pct_miss" = missings, 
+                       "variable" = names(missings)) 
+missings <- missings %>% 
+  arrange(-pct_miss)
+
+remove <- missings %>% 
+   filter(pct_miss >= 98 | pct_miss <= 5) %>% 
+   pull(variable)
+
+data <- data %>% 
+   select(-{{remove}})
+  
+missings <- missings %>% 
+  filter(!variable %in% {{remove}})
+
+missing_cols <- map_dfc(missings$variable, function(x){
+  data.frame(nom_var = ifelse(is.na(data[, x]), 1, 0))
+})
+
+colnames(missing_cols) <- paste0(colnames(missing_cols), "_missing")
+
+data <- data %>% 
+  bind_cols(missing_cols)
+
+data <- data %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+data <- data %>% 
+  select(-numren.x, -numren.y, -numren.y_missing, -parentesco, -madre_hog, 
+         -madre_id, -padre_hog, -padre_id, -conyuge_id, -prob_anio, -prob_mes,
+         )
+
+
+# Convertir variables factores a dummies?
+
 
 ###############################################################################
 
 # Dividir la base de datos en entrenamiento y valdiación
 data_validacion <- treatment_assign(data = data, share_control = 0.8,
-                                    n_t = 1, seed = 1996, key = "foliohog",
-                                    strata_varlist = "foliohog")
+                                    n_t = 1, seed = 1996, key = "id_2",
+                                    strata_varlist = "id_2")
+
 data_validacion <- data_validacion$data %>% 
   ungroup() %>% 
   select(treat)
@@ -185,6 +225,13 @@ data_entrenamiento <- data %>%
 data_validacion <- data %>% 
   filter(tratamiento == 1)
 
+# Undersampling
+UNDER <- recipe(churn ~., data = data_entrenamiento) %>%
+  step_meanimpute(all_predictors()) %>%
+  step_downsample(, seed = 123) %>%
+  prep()
+
+under_training_set <- bake(UNDER, new_data = NULL) # es el nuevo training balanceado con undersampling
 
 
 
