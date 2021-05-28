@@ -42,3 +42,41 @@ Parte de los desafíos consiste en crear grupos *comparables* para poder ver las
 
 El modelo a implementar es el Causal Forest propuesto por Athey y Wager (2018) que permite 
 
+
+# Anexo Estadístico
+
+Dada la estrategia de evaluación del programa Prospera usando el algoritmo de Causal Forest propuesto por Athey y Wager (2018), es necesario cumplir con ciertos supuestos previos de la inferencia causal y entender el planteamiento econométrico del modelo. En la redacción del reporte mantuvimos un lenguaje no técnico. En este apartado, profundizamos más en algunos conceptos importantes pero que requieren de un nivel previo de conocimiento y detallan el preprocesamiento de los datos.
+
+## Preparación de la Base
+
+Una vez que identificamos las tres variables dependientes (objetivo) sobre las cuales evaluamos el éxito (o fracaso) de PROSPERA, es necesario extraer la información de cada uno de los individuos del estudio. La construcción de la matriz de  características está lejos de ser trivial dado que requiere de todo un trabajo de limpieza en la base. Esto es particularmente problemático en nuestro contexto dado que la fuente de la cual obtuvimos la información fue la Encuesta Nacional de Ingresos y Gastos (ENIGH) del 2018. "Tras bambalinas", el paso previo a la estimación de los modelos consistió en unir al menos 5 bases distintas: 1) que lograran explicar algo de las personas (i.e. que fueran relevantes para el estudio) y 2) que quedaran homologadas para poder ser utilizadas por el algoritmo.
+
+
+Las preguntas de cada una de las bases (o cuestionarios según le INEGI) capturan diversas dimensiones que definen a los individuos que participan en la encuesta. Por ejemplo, en el caso de vivienda extraemos información sobre las características físicas de su hogar como el material de los pisos, techos, número de cuarto, acceso a servicios básicos, tenencia de inmuebles, entre otros. En el módulo del hogar identificamos los activos a los que tiene acceso (electrodomésticos, servicio de telefonía, internet, etc.) pero también preguntas de acceso alimentario tanto del número de comidas diarias como la calidad de los mismos. En el cuestionario de población extraemos información demográfica, si existe algún problema de discapacidad, nivel educativo, afiliaciones de seguridad social, actividades de su vida cotidiana y asignación de su tiempo. Por último, en los módulos de ingresos y trabajos extraemos todo lo relativo a su posición en el mercado laboral, salarios, prestaciones, transferencias, créditos, horas trabajadas y acceso al sistema financiero.  
+
+Después de juntar toda la información inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo.\footnote{En nuestro código documentamos, en la medida de lo posible, todas las variables que provocaron problema de missing values.}
+
+## Implementación del Causal Machine Learning
+
+Con respecto a los fundamentos del aprendizaje estadístico causal, el interés primordial de la evaluación de impacto que planteamos aquí busca identificar el efecto que tiene PROSPERA en las 3 variables de respuesta propuestas. En este sentido, nuestro planteamiento se resume en:
+\begin{align*}
+Y_{i} = X_{i}\beta + \tau PROSPERA_{i} + \epsilon
+\end{align*}
+Donde:
+
+* $Y_{i}$ es:
+ + 1) Si en alguna ocasión el hogar se preocupó por que faltara comida ($CarenciaComida_{i}$); 
+ + 2) La probabilidad de que los miembros del hogar tuvieran un empleo informal ($Informal_{i}$);
+ + 3)  La probabilidad de que los integrantes terminaran secundaria ($Secundaria_{i}$)
+ 
+* $X$ es una matriz de tamaño (TAMAÑO!!) que incluye todas las variables obtenidas de ENIGH que identifica características físicas de la vivienda, de activos en el hogar, de ingresos, pertenencia a sistemas de salud, particularidades sociodemográficas y relación con la familia. 
+
+* $PROSPERA_{i}$ es la variable que identifica si el individuo es beneficiario del programa gubernamental, ya sea de manera directa o a través de la relación con algún miembro del hogar. Dada la construcción de la variable está es dicotómica. 
+
+El parámetro de interés en todo el planteamiento es $\tau$, que identifica el impacto del tratamiento en cada una de las variables dependientes. De manera aún más específica, buscamos llegar econométricamente a:
+\begin{align*}
+\tau_{i}=\frac{\partial Y_{i}}{\partial T_{i}}
+\end{align*}
+Tomando en cuenta que la unidad de observación de nuestro estudio ($i$) son individuos por lo que contamos con NUMERO DE OBSERVACIONES!! representativos de la población mexicana. 
+
+Los algoritmos de aprendizaje estadístico, por otra parte son útiles para 
