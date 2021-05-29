@@ -1,6 +1,6 @@
 ---
 title: "Evaluación de Impacto del Programa Prospera"
-author: "Equipo 6: Adrián M., Alexa G. Jorge H., Miguel L., Carlos L."
+author: "Equipo 6: Adrián, Alexa, Jorge, Miguel, Carlos"
 date: "28/5/2021"
 
 fontsize: 10 pt
@@ -12,7 +12,17 @@ output:
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kableExtra)
+library(tidyr)
+library(knitr)
+options(scipen=999)
 ```
+
+<style>
+body {
+text-align: justify}
+</style>
 
 # Estrategia de Focalización - Programa Prospera
 
@@ -43,8 +53,6 @@ Una vez que identificamos las tres variables dependientes (objetivo) sobre las c
 
 Las preguntas de cada una de las bases (o cuestionarios según el INEGI) capturan diversas dimensiones que definen a los individuos que participan en la encuesta. Por ejemplo, en el caso de vivienda extraemos información sobre las características físicas de su hogar como el material de los pisos, techos, número de cuartos, acceso a servicios básicos, tenencia de inmuebles, entre otros. En el módulo del hogar identificamos los activos a los que tiene acceso (electrodomésticos, servicio de telefonía, internet, etc.) pero también preguntas de acceso alimentario tanto del número de comidas diarias como la calidad de los mismos. En el cuestionario de población extraemos información demográfica, si existe algún problema de discapacidad, nivel educativo, afiliaciones de seguridad social, actividades de su vida cotidiana y asignación de su tiempo. Por último, en los módulos de "ingresos" y "trabajos" extraemos todo lo relativo a su posición en el mercado laboral, salarios, prestaciones, transferencias, créditos, horas trabajadas y acceso al sistema financiero.  
 
-Después de juntar toda la información, inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo.\footnote{En nuestro código documentamos, en la medida de lo posible, todas las variables que provocaron problema de missing values.}
-
 Con la información de los hogares extraida de la ENIGH, podemos identificar la proporción de mexicanos que sufren de estas carencias, quiénes de ellos son beneficiarios de PROSPERA y quiénes pertenecen a un grupo de situación vulnerable (población femenina e indígena).
 
 ## Estadísticas Descriptivas 
@@ -53,12 +61,12 @@ Tomamos en cuenta diversas variables de interés para identificar su relación c
 
 En primer lugar, nos enfocamos en la carencia alimentaria. En la ENIGH se le pregunta a los individuos si se vieron en la preocupación de que la comida se acabara alguna vez por falta de dinero. 
 
-```{r, message=FALSE, warning=FALSE}
-#Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
-#1 es Sí 
-#2 es no
-ruta_archivos<-"C:/Users/Lenovo/Downloads/base"
-base <- readRDS(ruta_archivos)
+```{r, echo=FALSE}
+# ruta_archivos<-"C:/Users/Lenovo/Downloads/base"
+# base <- readRDS(ruta_archivos)
+# save(base, file="C:/Users/Lenovo/Downloads/base.RData")
+ruta_archivos2<-"C:/Users/Lenovo/Downloads/base.RData"
+load(ruta_archivos2)
 
 base_alim1<-base%>%
   group_by(acc_alim1)%>%
@@ -67,6 +75,13 @@ base_alim1<-base%>%
          preocupacion_comida=ifelse(acc_alim1==1,"Sí",ifelse(acc_alim1==2,"No","NA")))%>%
   dplyr::select(preocupacion_comida,total,porcentaje) %>%
   slice(1:2)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
+#1 es Sí 
+#2 es no
 
 kable(base_alim1, align = c("c", "c", "c"), 
       caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.", digits=3, 
@@ -74,10 +89,11 @@ kable(base_alim1, align = c("c", "c", "c"),
   kable_classic(full_width = F, html_font = "Cambria") %>%
   footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
   row_spec(0, bold = T)
+```
 
+```{r, echo=FALSE}
 base<-base%>%
   mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
-
 ```
 
 Tomando esta pregunta como proxy de la carencia alimentaria, notamos que en México, un total de `r base_alim1$total[1]` de personas tienen esta carencia, es decir un `r base_alim1$porcentaje[1]` de la población.
@@ -90,59 +106,340 @@ Por otro lado, estamos interesados en la relación entre pertenecer al programa 
 Para propósitos de nuestro ejercicio, los informales serán aquellos que cumplan con al menos una de estas condiciones. 
 
 ```{r}
-rm(base_alim1)
-
 #Informalidad se va a sacar a través de 5 distintas preguntas (ver paper Finance and Employment Formalization: Evidence
 #from Mexico's Income-Expenditure Surveys)
 
 #1) Contrato - ¿Existe un contrato laboral por escrito con el trabajador?
 #1 es Sí 
 #2 es no
+base %>%
+  group_by(contrato)%>%
+  summarise(total=n())%>% 
+  mutate(porcentaje=total/sum(total),
+         Contrato=ifelse(contrato==1,"Sí",ifelse(contrato==2,"No","NA")))%>%
+  dplyr::select(Contrato,total,porcentaje) %>%
+kable(align = c("c", "c", "c"), caption="Existencia de un contrato laboral por escrito.", digits=3, col.names = linebreak(c("Contrato", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+
+```{r, echo=FALSE}
 base_contrato<-base%>%
   group_by(contrato)%>%
   summarise(total=n())%>% 
   mutate(porcentaje=total/sum(total),
          Contrato=ifelse(contrato==1,"Sí",ifelse(contrato==2,"No","NA")))%>%
   dplyr::select(Contrato,total,porcentaje)
-
-kable(base_contrato, align = c("c", "c", "c"), caption="Existencia de un contrato laboral por escrito.", digits=3, col.names = linebreak(c("Contrato", "Total", "Porcentaje")))%>%
-  kable_classic(full_width = F, html_font = "Cambria") %>%
-  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
-  row_spec(0, bold = T)
 ```
+
+
 ```{r}
 #2) Como le pagaron? (#9)
 #1 recibe pago
 #2 trabajador sin pago en un negocio del hogar 
 #3 trabajador sin pago en un negocio que no es del hogar
+base %>%
+  mutate(Pago=ifelse(pago==1,"Sí",ifelse(pago==2|3,"No","NA")))%>%
+  group_by(Pago)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total))%>%
+  dplyr::select(Pago,total,porcentaje) %>%
+kable(align = c("c", "c", "c"), caption="Cómo le pagaron: ¿Recibe un pago o no?",digits=3, col.names = linebreak(c("Pago", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Las opciones de respuesta son: a) Sin Pago en un negocio del hogar ó b) Sin pago en un negocio fuera del hogar. Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+```{r, echo=FALSE}
 base_pago<-base%>%
   mutate(Pago=ifelse(pago==1,"Sí",ifelse(pago==2|3,"No","NA")))%>%
   group_by(Pago)%>%
   summarise(total=sum(factor,na.rm=T))%>% 
   mutate(porcentaje=total/sum(total))%>%
   dplyr::select(Pago,total,porcentaje)
+```
 
-kable(base_pago, align = c("c", "c", "c"), caption="Cómo le pagaron: ¿Recibe un pago o no?",digits=3, col.names = linebreak(c("Pago", "Total", "Porcentaje")))%>%
-  kable_classic(full_width = F, html_font = "Cambria") %>%
-  footnote(general = "Las opciones de respuesta son: a) Sin Pago en un negocio del hogar ó b) Sin pago en un negocio fuera del hogar. Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+
+```{r, echo=FALSE}
+# base_prestaciones <- base%>%
+#   filter(edad>12) %>%
+#   mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
+#                              |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
+#                              |pres_11==11|pres_12==12|pres_13==13|pres_14==14
+#                              |pres_15==15|pres_16==16|pres_17==17|pres_18==18
+#                              |pres_19==19,1,2))%>%
+#   dplyr::select(prestaciones,factor) %>%
+#   mutate_all(~replace(., is.na(.), 0))%>%
+#   mutate(prestaciones=ifelse(prestaciones==1,"Sí","No"))%>%
+#   group_by(prestaciones)%>%
+#   summarise(total=sum(factor,na.rm=T))%>%
+#   mutate(porcentaje=total/sum(total))%>%
+#   dplyr::select(prestaciones,total,porcentaje)
+
+# save(base_prestaciones, file="C:/Users/Lenovo/Downloads/base_prestaciones.RData")
+ruta_archivos_prestaciones<-"C:/Users/Lenovo/Downloads/base_prestaciones.RData"
+load(ruta_archivos_prestaciones)
+```
+
+
+```{r}
+#3) ¿Recibe prestaciones?
+ kable(base_prestaciones,  align = c("c", "c", "c"), caption="En el trabajo que tuvo, ¿le dieron alguna prestación?", digits=3, col.names = linebreak(c("Prestaciones", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria")%>%
+  footnote("Prestaciones: Incapacidad médica, aguinaldo, vacaciones, reparto de utilidades, crédito de vivienda, guarderías, cuidados maternos o paternos, SAR o AFORE, seguro de vida, préstamos, prima vacacional, apoyos educativos, servicio de comedor, FONACOT, despensas, ayuda a pago de servicios, pensión de invalidez, pensión por fallecimiento u otras prestaciones.",threeparttable = T, footnote_as_chunk = T) %>%
   row_spec(0, bold = T)
 ```
+
 ```{r}
+# Con estas condiciones realizamos la categorización de informales.
+base_2<-base %>% 
+  mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
+                             |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
+                             |pres_11==11|pres_12==12|pres_13==13|pres_14==14
+                             |pres_15==15|pres_16==16|pres_17==17|pres_18==18
+                             |pres_19==19,1,2))%>%
+  dplyr::select(prestaciones,factor,contrato,pago, edad)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  mutate(informal=ifelse(contrato==2|pago==2|pago==3|prestaciones!=1,1,0))
 
+base_informalidad<-base_2 %>%
+  filter(edad>12) %>% 
+  group_by(informal)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         informal=ifelse(informal==1,"Sí",ifelse(informal==0,"No","NA")))%>%
+  dplyr::select(informal,total,porcentaje)
+
+kable(base_informalidad, align = c("c", "c", "c"), caption="¿El individuo trabaja en el sector informal?",digits=3, col.names = linebreak(c("Pago", "Total", "Porcentaje"))) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con cálculos a partir de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+
+```{r, echo=FALSE}
+base$informal<-base_2$informal
+```
+
+En estas preguntas, encontramos que `r base_contrato$total[base_contrato$Contrato=="No"][1]` personas respondieron que trabajaban sin un contrato por escrito. También, `r base_pago$total[base_pago$Pago=="No"][1]` individuos trabajaban sin alguna remuneración, y sólo `r base_prestaciones$total[base_prestaciones$prestaciones=="Sí"][1]` contestaron que recibían alguna prestación .
+
+Considerando todo lo anterior, encontramos que `r base_informalidad$total[base_informalidad$informal=="Sí"][1]` individuos pertenecerían a la informalidad, el `r base_informalidad$porcentaje[base_informalidad$informal=="Sí"][1]` de las personas con más de 12 años en la muestra. 
+
+Ahora estimamos la proporción de personas con un nivel educativo igual o mayor a la secundaria. Esto será útil para revisar si quienes reciben el programa Prospera ven alguna mejora en la carencia educativa.
+
+```{r, echo=FALSE}
+rm(base_contrato, base_pago, base_prestaciones, base_informalidad)
 ```
 
 
-
-```{r cars}
-summary(cars)
+```{r, echo=FALSE}
+base_educacion<-base%>%
+  mutate(mayor_secundaria=ifelse(nivelaprob>=3,1,2))%>%
+  group_by(mayor_secundaria)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         mayor_secundaria=ifelse(mayor_secundaria==1,"Sí","No"))%>%
+  dplyr::select(mayor_secundaria,total,porcentaje) %>% slice(1:2)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r, message=FALSE, warning=FALSE}
+#La probabilidad de los integrantes terminaran la secundaria 
+#Nivel aprob
+#3 o más es educación mayor o igual a secundaria
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+kable(base_educacion, align = c("c", "c", "c"), caption="Integrantes que terminaron la secundaria.",digits=3, col.names = linebreak(c("Pago", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r, echo=FALSE}
+base<-base%>%
+  mutate(menor_secundaria=ifelse(nivelaprob<=3,1,0))
+```
+
+En México, el `r base_educacion$porcentaje[base_educacion$mayor_secundaria=="No"][1]*100`% de la población respondió que tiene un nivel educativo menor a secundaria. Es un porcentaje relativamente elevado, pero suena razonable para el país. 
+
+Posteriormente procedimos a identificar a los beneficiarios del programa Prospera. Para esto, empleamos las siguientes variables: i) si el programa Prospera le otorgó una beca escolar al individuo, ii) si IMSS/Prospera le proporciona servicios de salud al entrevistado, iii) si el individuo frecuenta Prospera para recibir atención médica, iv) si Prospera es la primera o segunda institución en la que el individuo atiende su salud y v) si el individuo recibe ingresos por transferencias de Prospera. Definimos a los beneficiarios del programa, como aquellos individuos que obtienen cualquiera de estos beneficios de Prospera, ya que para recibirlos deben estar inscritos en el padrón del programa.
+
+```{r, echo=FALSE}
+ruta_archivos_inicial<-"C:/Users/Lenovo/Downloads/base_inicial.RData"
+load(ruta_archivos_inicial)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#Identificación de gente en el programa prospera 
+
+base %>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|ing_prospera>0,1,2))%>%
+  dplyr::select(Prospera,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  group_by(Prospera)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         Prospera=ifelse(Prospera==1,"Sí","No"))%>%
+  dplyr::select(Prospera,total,porcentaje) %>%
+kable(align = c("c", "c", "c"), caption="Individuos en el programa PROSPERA",digits=3, col.names = linebreak(c("Prospera", "Total", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+
+```{r, echo=FALSE}
+base_prospera <- base %>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|ing_prospera>0,1,2))%>%
+  dplyr::select(Prospera,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  group_by(Prospera)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         Prospera=ifelse(Prospera==1,"Sí","No"))%>%
+  dplyr::select(Prospera,total,porcentaje)
+```
+
+```{r, echo=FALSE}
+base_prospera_2<-base%>%
+  mutate(Prospera=ifelse(otorg_b==1|inst_5==5|servmed_4==4|inst_1==12|inst_2==12|ing_prospera>0,1,2))%>%
+  dplyr::select(Prospera,factor)%>%
+  mutate_all(~replace(., is.na(.), 0))
+
+base$prospera<-base_prospera_2$Prospera
+```
+
+
+Con esta información, pudimos identificar que `r base_prospera$porcentaje[base_prospera$Prospera=="Sí"]*100`% de la población obtiene algún beneficio del programa, ya sea de forma directa o a través de alguna relación familiar. Esto es, un total de `r base_prospera$total[base_prospera$Prospera=="Sí"]` de personas tienen acceso a Prospera.
+
+Dado que nos interesa analizar la relación del programa con las carencias anteriormente establecidas (informalidad, alimentación y educación), nos disponemos a analizar el número de personas que tienen distinto número de carencias y cuántas tienen acceso al programa prospera.
+
+```{r}
+base<-base%>%
+  mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
+base_2<-base%>% 
+  mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
+                             |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
+                             |pres_11==11|pres_12==12|pres_13==13|pres_14==14
+                             |pres_15==15|pres_16==16|pres_17==17|pres_18==18
+                             |pres_19==19,1,2))%>%
+  dplyr::select(prestaciones,factor,contrato,pago, edad)%>%
+  mutate_all(~replace(., is.na(.), 0))%>%
+  mutate(informal=ifelse(contrato==2|pago==2|pago==3|prestaciones!=1,1,0))
+
+base_informalidad<- base_2%>%
+  filter(edad>12) %>% 
+  group_by(informal)%>%
+  summarise(total=sum(factor,na.rm=T))%>% 
+  mutate(porcentaje=total/sum(total),
+         informal=ifelse(informal==1,"Sí",ifelse(informal==0,"No","NA")))%>%
+  dplyr::select(informal,total,porcentaje)
+```
+
+```{r, echo=FALSE}
+base$informal<-base_2$informal
+base<-base%>%
+  mutate(menor_secundaria=ifelse(nivelaprob<=3,1,0))
+```
+
+```{r, message=FALSE, warning=FALSE}
+#La variable preocupación_comida indica si el individuo ha tenido está preocupación (1 sí y 0 no)
+#La variable informal indica si el individuo trabaja en el sector informal (1 sí y 0 no)
+#La variable menor_secundaria indica si el individuo tiene menor educación secundaria (1 sí y 0 no)
+#La variable prospera indica si el individuo está en prospera o no (1 sí y 0 no)
+base_grafica<-base%>%
+  mutate(preocupacion_comida=as.numeric(preocupacion_comida),
+    total_carencias=informal+preocupacion_comida+menor_secundaria)
+
+base_grafica_2<-base_grafica%>%
+  group_by(total_carencias, prospera)%>%
+  summarize(total=sum(factor,na.rm=T))%>%
+  filter(!is.na(total_carencias))%>%
+  ungroup()
+
+
+p<-ggplot(data=base_grafica_2, aes(x=as.factor(total_carencias), y=total, fill=as.factor(prospera))) +
+geom_bar(stat="identity", color="black", position=position_dodge())+
+  theme_minimal()+
+  scale_fill_manual("Prospera",values=c("steelblue", "grey"))+
+  labs(title = "Número de personas por cantidad de carencias")+
+  xlab(label = "Número de Carencias")+
+  ylab("Total de personas")
+
+p
+```
+
+```{r, echo=FALSE}
+rm(base_grafica_2)
+```
+
+Podemos notar que efectivamente, hay más personas beneficiarias del programa Prospera entre más carencias se tienen. Además, la mayoría de la población en general tiene 2 carencias. 
+
+Uno de los grupos en situación de vulnerabilidad en México son aquellos que pertenecen a etnias indígenas, en particular las mujeres en este grupo. Por lo tanto, es relevante analizar el acceso al programa Prospera de los diferentes grupos poblacionales: por sexo y por su autoadscripción a una etnia en particular.
+
+```{r, message=FALSE, warning=FALSE}
+#Gráfica para ver número de personas por sexo, etnia, carencias y beneficiarios del programa.
+base_grafica_2<-base_grafica %>% 
+  group_by(total_carencias, prospera, etnia, sexo)%>%
+  summarize(total=sum(factor,na.rm=T))%>%
+  filter(!is.na(total_carencias))%>%
+  ungroup()        
+
+base_grafica_2<-base_grafica_2 %>%
+  mutate(etnia2=ifelse(etnia==1, "Pertenece a Etnia","No pertenece a Etnia"),
+         sexo2=ifelse(sexo==1, "Hombre", "Mujer"))
+
+p2<-ggplot(data=base_grafica_2, aes(x=as.factor(total_carencias), y=total, fill=as.factor(prospera))) +
+geom_bar(stat="identity", color="black", position=position_dodge())+
+  theme_minimal()+
+  scale_fill_manual("Prospera",values=c("steelblue", "red"))+
+  labs(title = "Número de personas por cantidad de carencias")+
+  xlab(label = "Número de Carencias")+
+  ylab("Total de personas")+
+  facet_wrap(~etnia2+sexo2)
+
+p2
+```
+
+Podemos ver que la mayoría de la población no pertenece a un grupo étnico. Sin embargo, en términos proporcionales, las mujeres tienen un mayor acceso al programa prospera que los hombres, en particular para las personas con 2 o 3 carencias. Además, son las mujeres que pertenecen a una etnia las que en términos proporcionales tienen un mayor acceso al programa.
+
+Es importante corroborar que las personas beneficiarias del programa también son las que tienen menores ingresos. Para esto analizamos la distribución del ingreso entre los beneficiarios del programa prospera y los no beneficiarios. Podemos notar que efectivamente la mayoría de los individuos inscritos en el programa tienen un ingreso bajo, sin embargo, aún hay una cantidad importante con bajos ingresos y sin acceso al programa.
+
+```{r, message=FALSE, warning=FALSE}
+p <- base %>%
+  filter(ing_tri_tot<100000) %>% 
+  ggplot( aes(x=ing_tri_tot, fill=as.factor(prospera))) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_manual("Prospera",values=c("#69b3a2", "#404080")) +
+    labs(fill="")+
+  theme_bw()+
+  labs(title = "Distribución del ingreso")+
+  xlab("Ingreso trimestral total")+
+  ylab("Total personas")
+p
+```
+
+## Implementación del Causal Machine Learning
+
+Con respecto a los fundamentos del aprendizaje estadístico causal, el interés primordial de la evaluación de impacto que planteamos aquí busca identificar el efecto que tiene PROSPERA en las 3 variables de respuesta propuestas. En este sentido, nuestro planteamiento se resume en:
+\begin{align*}
+Y_{i} = X_{i}\beta + \tau PROSPERA_{i} + \epsilon
+\end{align*}
+Donde:
+
+* $Y_{i}$ es:
+ + 1) Si en alguna ocasión el hogar se preocupó por que faltara comida ($CarenciaComida_{i}$); 
+ + 2) La probabilidad de que los miembros del hogar tuvieran un empleo informal ($Informal_{i}$);
+ + 3)  La probabilidad de que los integrantes terminaran secundaria ($Secundaria_{i}$)
+ 
+* $X$ es una matriz de tamaño (192,049 x 904) que incluye todas las variables obtenidas de ENIGH que identifica características físicas de la vivienda, de activos en el hogar, de ingresos, pertenencia a sistemas de salud, particularidades sociodemográficas y relación con la familia. 
+
+* $PROSPERA_{i}$ es la variable que identifica si el individuo es beneficiario del programa gubernamental, ya sea de manera directa o a través de la relación con algún miembro del hogar. Dada la construcción de la variable está es dicotómica. 
+
+El parámetro de interés en todo el planteamiento es $\tau$, que identifica el impacto del tratamiento en cada una de las variables dependientes. De manera aún más específica, buscamos llegar econométricamente a:
+\begin{align*}
+\tau_{i}=\frac{\partial Y_{i}}{\partial T_{i}}
+\end{align*}
+Tomando en cuenta que la unidad de observación de nuestro estudio ($i$) son individuos por lo que contamos con 192,049 representativos de la población mexicana. 
+
+## Preparación de matrices
+
+Después de juntar toda la información, inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo.\footnote{En nuestro código documentamos, en la medida de lo posible, todas las variables que provocaron problema de missing values.}
