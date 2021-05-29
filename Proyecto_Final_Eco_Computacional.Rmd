@@ -107,22 +107,28 @@ Tomamos en cuenta diversas variables de interés para identificar su relación c
 #Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.
 #1 es Sí 
 #2 es no
+ruta_archivos<-"C:/Users/Lenovo/Downloads/base"
+
+
+
+base <- readRDS(ruta_archivos)
+
 base_alim1<-base%>%
   group_by(acc_alim1)%>%
   summarise(total=sum(factor,na.rm=T))%>% 
   mutate(porcentaje=total/sum(total),
          preocupacion_comida=ifelse(acc_alim1==1,"Sí",ifelse(acc_alim1==2,"No","NA")))%>%
-  dplyr::select(preocupacion_comida,total,porcentaje)
+  dplyr::select(preocupacion_comida,total,porcentaje) 
 
-kable(base_alim1,caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.",digits=3)%>%
-  kable_classic(full_width = F, html_font = "Cambria")
-
-
+kable(base_alim1, align = c("c", "c", "c"), 
+      caption="Alguna vez por falta de dinero o recursos, se vio en la preocupación que la comida se acabara.", digits=3, 
+      col.names = linebreak(c("Respuesta", "Población", "Porcentaje")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
 
 base<-base%>%
   mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
-
-
 
 ```
 
@@ -130,7 +136,7 @@ base<-base%>%
 En primer lugar, nos enfocamos en la carencia alimentaria. En la ENIGH se le pregunta a los individuos si se vieron en la preocupación de que la comida se acabara alguna vez por falta de dinero. Tomando esta pregunta como proxy de la carencia alimentaria, notamos que en México, un total de `r base_alim1$total[1]` de personas tienen esta carencia, es decir un `r base_alim1$porcentaje[1]` de la población.
 
 
-Por otro lado, estamos interesados en la relación entre pertenecer al programa y laborar en el sector informal. Para identificar si un individuo labora en la informalidad, no basamos en el paper "Finance and Employment Formalization: Evidence from Mexico's Income-Expenditure Surveys", de Bazdresch y Werner, 2011. Estos autores identificaron a los integrantes de la informalidad por medio de algunas características particulares:
+Por otro lado, estamos interesados en la relación entre pertenecer al programa y laborar en el sector informal. Para identificar si un individuo labora en la informalidad, no basamos en el paper "Finance and Employment Formalization: Evidence from Mexico's Income-Expenditure Surveys", de Bazdresch y Werner (2011). Estos autores identificaron a los integrantes de la informalidad por medio de algunas características particulares:
 - Si no existe un contrato laboral por escrito con el trabajador.
 - El trabajador no recibe pago  y trabaja en un negocio del hogar, o es un trabajador(a) sin pago en un negocio que no es del hogar.
 - El trabajador no percibe prestaciones, como incapacidad médica, aguinaldo, vacaciones, reparto de utilidades, crédito de vivienda, guarderías, cuidados maternos o paternos, SAR o AFORE, seguro de vida, préstamos, prima vacacional, apoyos educativos, servicio de comedor, FONACOT, despensas, ayuda a pago de servicios, pensión de invalidez, pensión por fallecimiento u otras prestaciones.
@@ -194,7 +200,6 @@ kable(base_prestaciones,caption="En el trabajo que tuvo le dieron alguna prestac
   footnote("Prestaciones: Incapacidad médica, aguinaldo, vacaciones, reparto de utilidades, crédito de vivienda, guarderías, cuidados maternos o paternos, SAR o AFORE, seguro de vida, préstamos, prima vacacional, apoyos educativos, servicio de comedor, FONACOT, despensas, ayuda a pago de servicios, pensión de invalidez, pensión por fallecimiento u otras prestaciones.")
 
 # Con estas condiciones realizamos la categorización de informales.
-
 base_2<-base%>% 
   mutate(prestaciones=ifelse(pres_1==1|pres_2==2|pres_3==3|pres_4==4|pres_5==5
                              |pres_6==6|pres_7==7|pres_8==8|pres_9==9|pres_10==10
@@ -221,7 +226,7 @@ base$informal<-base_2$informal
 
 
 ```
-En estas preguntas, econtramos que `r base_contrato$total[base_contrato$Contrato=="No"][1]` personas respondieron que trabajaban sin un contrato por escrito. También, `r base_pago$total[base_pago$Pago=="No"][1]` individuos trabajaban sin alguna remuneración, y sólo `r base_prestaciones$total[base_prestaciones$prestaciones=="Sí"][1]` contestaron que recibían alguna prestación .
+En estas preguntas, encontramos que `r base_contrato$total[base_contrato$Contrato=="No"][1]` personas respondieron que trabajaban sin un contrato por escrito. También, `r base_pago$total[base_pago$Pago=="No"][1]` individuos trabajaban sin alguna remuneración, y sólo `r base_prestaciones$total[base_prestaciones$prestaciones=="Sí"][1]` contestaron que recibían alguna prestación .
 
 Considerando todo lo anterior, encontramos que `r base_informalidad$total[base_informalidad$informal=="Sí"][1]` individuos pertenecerían a la informalidad, el `r base_informalidad$porcentaje[base_informalidad$informal=="Sí"][1]` de las personas con más de 12 años en la muestra. 
 
@@ -232,7 +237,6 @@ Ahora estimamos la proporción de personas con un nivel educativo igual o mayor 
 rm(base_contrato, base_pago, base_prestaciones)
 rm(base_informalidad)
 #La probabilidad de los integrantes terminaran la secundaria 
-
 #Nivel aprob
 #3 o más es educación mayor o igual a secundaria
 
@@ -246,8 +250,6 @@ base_educacion<-base%>%
 
 kable(base_educacion,caption="Integrantes que terminaron la secundaria.",digits=3)%>%
   kable_classic(full_width = F, html_font = "Cambria")
-
-
 
 base<-base%>%
   mutate(menor_secundaria=ifelse(nivelaprob<=3,1,0))

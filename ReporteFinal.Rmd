@@ -16,6 +16,12 @@ library(tidyverse)
 library(kableExtra)
 library(tidyr)
 library(knitr)
+library(RCT)
+library(stringr)
+library(purrr)
+library(gamlr)
+library(data.table)
+
 options(scipen=999)
 ```
 
@@ -26,7 +32,7 @@ text-align: justify}
 
 # Estrategia de Focalización - Programa Prospera
 
-*Objetivo:* El presente documento realiza un análisis de impacto del programa PROSPERA utilizando herramientas de aprendizaje estadistico para identificar los hogares donde el plan fue exitoso. Con esto en mente, nuestra recomendación es focalizar el programa a un grupo de ____ hogares para los cuales identificamos un impacto total de ______ en comparación con la manera en que fue diseñado originalmente, lo cual representa un impacto promedio por hogar de:_____________
+*Objetivo:* El presente documento realiza un análisis de impacto del programa PROSPERA utilizando herramientas de aprendizaje estadistico para identificar los hogares donde el plan fue exitoso. Con esto en mente, nuestra recomendación es que, en caso de un recorte presupuestario, focalizar el programa empezando repartir los apoyos a hogares que tienen individuos con una edad alta (aproximadamente de 40 años), que tienen un gasto alimenticio menor a los \$3500 pesos, y que tengan un número alto de hijos o dependientes económicos. 
 
 ## Introducción
 
@@ -41,15 +47,16 @@ El programa contaba con metas, llamados en sus proyectos "ámbitos de beneficio"
 Para el presente análisis buscamos focalizar los recursos a aquellos hogares en los cuales el programa Prospera haya tenido más éxito. Para evaluar a la población objetivo utilizamos los datos de la Encuesta Nacional de Ingresos y Gastos (ENIGH) del año 2018. Esta encuesta, realizada de manera bianual por el INEGI, registra de manera detallada los montos, procedencia y distribución de los ingresos en los hogares. En ella, por medio de diversas bases de datos, se identifica lo que los mexicanos perciben como salario, prestaciones, transferencias y su pertenencia a diversos programas de apoyo y cobertura gubernamental. Adicionalmente, también se hacen preguntas de sus condiciones de vivienda, activos con los que cuenta y situaciones de carencia y vulnerabilidad sanitaria, económica o física.
 
 En nuestro análisis definimos tres metas sobre las cuales evaluamos la relevancia de Prospera:
-1) Si en alguna ocasión el hogar se preocupó porque faltara comida.
-2) La probabilidad de que los miembros del hogar tuvieran un empleo informal.
-3) La probabilidad de que los integrantes terminaran la secundaria. 
 
-Estos tres puntos son relevantes puesto que forman parte de los objetivos generales que buscaba corregir Prospera, particularmente: 1) Alimentación, 2) Inclusión Laboral y 3) Educación. 
+  1. Si en alguna ocasión el hogar se preocupó porque faltara comida.
+  2. La probabilidad de que los miembros del hogar tuvieran un empleo informal.
+  3. La probabilidad de que los integrantes terminaran la secundaria. 
+
+Estos tres puntos son relevantes puesto que forman parte de los objetivos generales que buscaba corregir Prospera, particularmente: a) Alimentación, b) Inclusión Laboral y c) Educación. 
 
 ## Preparación de la Base
 
-Una vez que identificamos las tres variables dependientes (objetivo) sobre las cuales evaluamos el éxito (o fracaso) de PROSPERA, es necesario extraer la información de cada uno de los individuos del estudio. La construcción de la matriz de  características está lejos de ser trivial dado que requiere de todo un trabajo de limpieza en la base. Esto es particularmente problemático en nuestro contexto dado que la fuente de la cual obtuvimos la información fue la Encuesta Nacional de Ingresos y Gastos (ENIGH) del 2018. "Tras bambalinas", el paso previo a la estimación de los modelos consistió en unir al menos 5 bases distintas: 1) que lograran explicar algo de las personas (i.e. que fueran relevantes para el estudio) y 2) que quedaran homologadas para poder ser utilizadas por el algoritmo.
+Una vez que identificamos las tres variables dependientes (objetivo) sobre las cuales evaluamos el éxito (o fracaso) de PROSPERA, es necesario extraer la información de cada uno de los individuos del estudio. La construcción de la matriz de  características está lejos de ser trivial dado que requiere de todo un trabajo de limpieza en la base. Esto es particularmente problemático en nuestro contexto dadas las particularidades de la ENIGH. Tras bambalinas, el paso previo a la estimación de los modelos consistió en unir al menos 5 bases distintas: que lograran explicar algo de las personas (i.e. que fueran relevantes para el estudio) y que quedaran homologadas para poder ser utilizadas por el algoritmo.
 
 Las preguntas de cada una de las bases (o cuestionarios según el INEGI) capturan diversas dimensiones que definen a los individuos que participan en la encuesta. Por ejemplo, en el caso de vivienda extraemos información sobre las características físicas de su hogar como el material de los pisos, techos, número de cuartos, acceso a servicios básicos, tenencia de inmuebles, entre otros. En el módulo del hogar identificamos los activos a los que tiene acceso (electrodomésticos, servicio de telefonía, internet, etc.) pero también preguntas de acceso alimentario tanto del número de comidas diarias como la calidad de los mismos. En el cuestionario de población extraemos información demográfica, si existe algún problema de discapacidad, nivel educativo, afiliaciones de seguridad social, actividades de su vida cotidiana y asignación de su tiempo. Por último, en los módulos de "ingresos" y "trabajos" extraemos todo lo relativo a su posición en el mercado laboral, salarios, prestaciones, transferencias, créditos, horas trabajadas y acceso al sistema financiero.  
 
@@ -96,7 +103,7 @@ base<-base%>%
   mutate(preocupacion_comida=ifelse(acc_alim1==1,1,ifelse(acc_alim1==2,0,"NA")))
 ```
 
-Tomando esta pregunta como proxy de la carencia alimentaria, notamos que en México, un total de `r base_alim1$total[1]` de personas tienen esta carencia, es decir un `r base_alim1$porcentaje[1]` de la población.
+Tomando esta pregunta como proxy de la carencia alimentaria, notamos que en México, un total de `r base_alim1$total[1]` de personas tienen esta carencia, es decir un \%42.25 de la población.
 
 Por otro lado, estamos interesados en la relación entre pertenecer al programa y laborar en el sector informal. Para identificar si un individuo labora en la informalidad, no basamos en el paper "Finance and Employment Formalization: Evidence from Mexico's Income-Expenditure Surveys", de Bazdresch y Werner (2011). Estos autores identificaron a los integrantes de la informalidad por medio de algunas características particulares:
 - Si no existe un contrato laboral por escrito con el trabajador.
@@ -222,7 +229,7 @@ base$informal<-base_2$informal
 
 En estas preguntas, encontramos que `r base_contrato$total[base_contrato$Contrato=="No"][1]` personas respondieron que trabajaban sin un contrato por escrito. También, `r base_pago$total[base_pago$Pago=="No"][1]` individuos trabajaban sin alguna remuneración, y sólo `r base_prestaciones$total[base_prestaciones$prestaciones=="Sí"][1]` contestaron que recibían alguna prestación .
 
-Considerando todo lo anterior, encontramos que `r base_informalidad$total[base_informalidad$informal=="Sí"][1]` individuos pertenecerían a la informalidad, el `r base_informalidad$porcentaje[base_informalidad$informal=="Sí"][1]` de las personas con más de 12 años en la muestra. 
+Considerando todo lo anterior, encontramos que `r base_informalidad$total[base_informalidad$informal=="Sí"][1]` individuos pertenecerían a la informalidad, el \% 45.9 de las personas con más de 12 años en la muestra. 
 
 Ahora estimamos la proporción de personas con un nivel educativo igual o mayor a la secundaria. Esto será útil para revisar si quienes reciben el programa Prospera ven alguna mejora en la carencia educativa.
 
@@ -419,16 +426,16 @@ p
 
 ## Implementación del Causal Machine Learning
 
-Con respecto a los fundamentos del aprendizaje estadístico causal, el interés primordial de la evaluación de impacto que planteamos aquí busca identificar el efecto que tiene PROSPERA en las 3 variables de respuesta propuestas. En este sentido, nuestro planteamiento se resume en:
+Con respecto a los fundamentos del aprendizaje estadístico causal, el interés primordial de la evaluación de impacto que planteamos aquí, busca identificar el efecto que tiene PROSPERA en las 3 variables de respuesta propuestas. En este sentido, nuestro planteamiento se resume en:
 \begin{align*}
 Y_{i} = X_{i}\beta + \tau PROSPERA_{i} + \epsilon
 \end{align*}
 Donde:
 
 * $Y_{i}$ es:
- + 1) Si en alguna ocasión el hogar se preocupó por que faltara comida ($CarenciaComida_{i}$); 
- + 2) La probabilidad de que los miembros del hogar tuvieran un empleo informal ($Informal_{i}$);
- + 3)  La probabilidad de que los integrantes terminaran secundaria ($Secundaria_{i}$)
+  1. Si en alguna ocasión el hogar se preocupó por que faltara comida ($CarenciaComida_{i}$); 
+  2. La probabilidad de que los miembros del hogar tuvieran un empleo informal ($Informal_{i}$);
+  3. La probabilidad de que los integrantes terminaran secundaria ($Secundaria_{i}$)
  
 * $X$ es una matriz de tamaño (192,049 x 904) que incluye todas las variables obtenidas de ENIGH que identifica características físicas de la vivienda, de activos en el hogar, de ingresos, pertenencia a sistemas de salud, particularidades sociodemográficas y relación con la familia. 
 
@@ -442,4 +449,728 @@ Tomando en cuenta que la unidad de observación de nuestro estudio ($i$) son ind
 
 ## Preparación de matrices
 
-Después de juntar toda la información, inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo.\footnote{En nuestro código documentamos, en la medida de lo posible, todas las variables que provocaron problema de missing values.}
+Después de juntar toda la información, inspeccionamos detalladamente la manera en que estaban codificadas las respuestas lo cual está íntimamente relacionado con el manejo de los valores faltantes. La determinación de imputar o eliminar variables y observaciones la realizamos basados en la lógica y la intención con la que se diseñaron los cuestionarios. De esta manera, el uso de los diccionarios fue una herramienta esencial y explotada en todo momento. Contar con toda la información de cada una de las preguntas, tuvo la consecuencia de ser un arma de doble filo: muchas variables para explorar, pero muchos errores de codificación producto natural de la manera en que se ejecutan estos programas en campo. ^[En nuestro código adjunto, en la medida de lo posible, mostramos limpieza de todas las variables que tenían missing values.]
+
+Para asignar entrenamiento y validación utilizamos la función `treatment_assign` de la librería RCT. Esta función crea una variable dicotómica que indica si la observación es de la base de entremiento o de validación. La asignación aleatoria es robusta y por estrato, aunque en nuestro caso no nos interesa utilizar ningún estrato. Utilizamos una división 80/20 como es usual. La función nos devuelve un vector con las asignaciones por observación, que luego pegamos a la base original.
+
+# Modelos
+
+## Double Debiased Machine Learning
+
+El método DDML se motiva así:
+$$y_i=\tau T_i+m(X_i)+\epsilon_i$$
+$$T_i=g(X_i)+u_i$$
+donde m y g son funciones desconocidas de todas las variables que podemos estimar por nuestro método favorito de Machine Learning. En particular, decidimos utilizar una estimación Cross Validated Lasso. La parte Lasso nos permite identificar las relaciones de baja linealidad entre las covariables. Cross validated significa que partimos nuestra base de entrenamiento en K partes iguales, para posteriormente:
+
+  - estimar g en K-1 partes 
+  
+  - utilizar la K-ésima como si fuera una base de "validación" del entrenamiento i.e. predecir con la estimación anterior los valores de la variable de interés $\hat{y_{i\in K}}=g(X_{i\in K})$ y ver su diferencia respecto a los valores reales $V^y_{i\in K}=y_{i\in K}-\hat{y_{i\in K}}$
+  
+  - hacer lo mismo para m y obtenemos $V^T_{i\in K}=T_{i\in K}-\hat{T_{i\in K}}$
+  
+Ya logramos aislar cualquier impacto de variables relevantes X tanto en Y como en T. Los residuales $V^y_{i\in K},V^T_{i\in K}$ son independientes de cualquier efecto de X. Es decir, la relación $\tau$ que obtengamos de la regresión $$V^y_{i\in K}=\alpha+\tau V^T_{i\in K}+\phi_i$$
+captura todo el efecto directo del tratamiento en la variable de interés sin intermediación de alguna otra covariable. Ergo, es una relación causal.
+
+Al utilizar LASSO para estimar la relación de las covariables con T y Y, logramos reducir los errores al mínimo. La función LASSO por sí misma encuentra (casi) todas las combinaciones que se nos puedan ocurrir que afectan a Y y T. Además, solo hace falta que una de las estimaciones sea perfecta (es decir, elimine todo el efecto de las covariables en los residuales) para que el sesgo de selección sea cero. Logramos una estimación doblemente robusta.
+
+## Análisis de Impacto con DDML
+
+```{r, echo=FALSE, eval=FALSE}
+ruta_archivos3<-"C:/Users/Lenovo/Downloads/data_final.RData"
+load(ruta_archivos3)
+
+data <-data %>% 
+  select(-id_2)
+
+data_entrenamiento <-data %>% 
+  filter(tratamiento==0)
+data_validacion <-data %>% 
+  filter(tratamiento==1) %>% 
+  select(-tratamiento)
+```
+
+```{r, eval=FALSE}
+colnames(data_entrenamiento)[grepl(" ", colnames(data_entrenamiento))] <- str_replace(colnames(data)[grepl(" ", colnames(data_entrenamiento))], " ", "")
+colnames(data_validacion)[grepl(" ", colnames(data_validacion))] <- str_replace(colnames(data)[grepl(" ", colnames(data_validacion))], " ", "")
+
+#DD LASSO
+
+#Partimos base en k=5 partes iguales
+lasso_treat <- vector(mode="list", length=5)
+lasso_monto <- vector(mode="list", length=5)
+
+data_entrenamiento <-data_entrenamiento%>% 
+  arrange(prospera)
+
+k<-treatment_assign(data = data_entrenamiento, share_control = 0.2, n_t = 4, 
+                    strata_varlist = "prospera",missfits = "global",
+                    seed = 1900, key ="prospera")$data
+k <- k%>% 
+  mutate(k = treat+1) %>% 
+  ungroup()
+
+data_entrenamiento<-bind_cols(data_entrenamiento, k %>% select(k))
+k<-k$k
+
+#----------------------------
+#DDML para preocupación comida
+
+info_ret<-data_entrenamiento$preocupacion_comida
+treat<-data_entrenamiento$prospera
+
+X<-data_entrenamiento %>% 
+  select(-preocupacion_comida, -prospera,-k, -tratamiento)
+
+
+modelo<-map_dfr(1:5,
+                function(a) {
+                  
+                  treat_fit <-gamlr(x = X[k!=a, , drop= F],
+                                    y = treat[k!=a], family="binomial") 
+                  treat_hat<-as.numeric(predict(treat_fit, 
+                                                newdata = X[k==a, , drop= F], 
+                                                type = "response"))
+                  lasso_treat[[a]] <<- treat_fit
+                  
+                  info_treat <- gamlr(x = X[k!=a, , drop= F],
+                                     y =  info_ret[k!=a])
+                  info_hat <- as.numeric(predict(info_treat,newdata = X[k==a, , 
+                                                                        drop= F],
+                                                  type ="response"))
+                  lasso_monto[[a]] <<- info_treat
+                  
+                  treat_resid <- treat[k==a]-treat_hat
+                  resid_y <- info_ret[k==a]-info_hat
+                  
+                  fits<-bind_cols("treat_hat" = treat_hat,
+                                  "info_hat"= info_hat,
+                                  "resid_treat" = treat_resid,
+                                  "resid_y" = resid_y)
+                })
+#Corremos modelo lineal
+mod1_res <- lm(resid_y~resid_treat,data = modelo)
+
+#Coeficientes de los 5 modelos
+coefs_treat<-lapply(lasso_treat, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_treat<-lapply(coefs_treat, function(x) x %>% filter(.!=0))
+
+coefs_mont<-lapply(lasso_monto, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_mont<-lapply(coefs_mont, function(x) x %>% filter(.!=0))
+
+for(i in 1:5){
+  names(coefs_treat[[i]]) <- "Coeficientes"
+  names(coefs_mont[[i]]) <- "Coeficientes"
+  
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  
+}
+
+#Guardamos variables relevantes para preocupación comida.
+
+coefs_treat_comida<-coefs_treat
+coefs_y_comida<-coefs_mont
+
+#-------------------------
+#DDML para menor_sec
+
+info_ret<-data_entrenamiento$menor_secundaria
+treat<-data_entrenamiento$prospera
+
+X<-data_entrenamiento %>% 
+  select(-menor_secundaria, -prospera,-k, -tratamiento)
+
+
+modelo<-map_dfr(1:5,
+                function(a) {
+                  
+                  treat_fit <-gamlr(x = X[k!=a, , drop= F],
+                                    y = treat[k!=a], family="binomial") 
+                  treat_hat<-as.numeric(predict(treat_fit, 
+                                                newdata = X[k==a, , drop= F], 
+                                                type = "response"))
+                  lasso_treat[[a]] <<- treat_fit
+                  
+                  info_treat <- gamlr(x = X[k!=a, , drop= F],
+                                      y =  info_ret[k!=a])
+                  info_hat <- as.numeric(predict(info_treat,newdata = X[k==a, , 
+                                                                        drop= F],
+                                                 type ="response"))
+                  lasso_monto[[a]] <<- info_treat
+                  
+                  treat_resid <- treat[k==a]-treat_hat
+                  resid_y <- info_ret[k==a]-info_hat
+                  
+                  fits<-bind_cols("treat_hat" = treat_hat,
+                                  "info_hat"= info_hat,
+                                  "resid_treat" = treat_resid,
+                                  "resid_y" = resid_y)
+                })
+
+
+#Corremos modelo lineal
+mod2_res <- lm(resid_y~resid_treat,data = modelo)
+
+
+#Coeficientes de los 5 modelos
+coefs_treat<-lapply(lasso_treat, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_treat<-lapply(coefs_treat, function(x) x %>% filter(.!=0))
+
+coefs_mont<-lapply(lasso_monto, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_mont<-lapply(coefs_mont, function(x) x %>% filter(.!=0))
+
+for(i in 1:5){
+  names(coefs_treat[[i]]) <- "Coeficientes"
+  names(coefs_mont[[i]]) <- "Coeficientes"
+  
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  
+}
+
+#Guardamos variables relevantes para menor_sec.
+
+coefs_treat_menor_sec<-coefs_treat
+coefs_y_menor_sec<-coefs_mont
+
+
+#-------------------------
+#DDML para informalidad
+
+info_ret<-data_entrenamiento$informal
+treat<-data_entrenamiento$prospera
+
+X<-data_entrenamiento %>% 
+  select(-informal, -prospera,-k, -tratamiento)
+
+
+modelo<-map_dfr(1:5,
+                function(a) {
+                  
+                  treat_fit <-gamlr(x = X[k!=a, , drop= F],
+                                    y = treat[k!=a], family="binomial") 
+                  treat_hat<-as.numeric(predict(treat_fit, 
+                                                newdata = X[k==a, , drop= F], 
+                                                type = "response"))
+                  lasso_treat[[a]] <<- treat_fit
+                  
+                  info_treat <- gamlr(x = X[k!=a, , drop= F],
+                                      y =  info_ret[k!=a])
+                  info_hat <- as.numeric(predict(info_treat,newdata = X[k==a, , 
+                                                                        drop= F],
+                                                 type ="response"))
+                  lasso_monto[[a]] <<- info_treat
+                  
+                  treat_resid <- treat[k==a]-treat_hat
+                  resid_y <- info_ret[k==a]-info_hat
+                  
+                  fits<-bind_cols("treat_hat" = treat_hat,
+                                  "info_hat"= info_hat,
+                                  "resid_treat" = treat_resid,
+                                  "resid_y" = resid_y)
+                })
+
+
+#Corremos modelo lineal
+mod3_res <- lm(resid_y~resid_treat,data = modelo)
+
+
+
+#Coeficientes de los 5 modelos
+coefs_treat<-lapply(lasso_treat, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_treat<-lapply(coefs_treat, function(x) x %>% filter(.!=0))
+
+coefs_mont<-lapply(lasso_monto, function(x) as.data.frame(as.matrix(coef(x)))) 
+coefs_mont<-lapply(coefs_mont, function(x) x %>% filter(.!=0))
+
+for(i in 1:5){
+  names(coefs_treat[[i]]) <- "Coeficientes"
+  names(coefs_mont[[i]]) <- "Coeficientes"
+  
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  setDT(coefs_treat[[i]], keep.rownames = "Nombres")[]
+  
+}
+
+#Guardamos variables relevantes para informalidad.
+
+coefs_treat_informalidad<-coefs_treat
+coefs_y_informalidad<-coefs_mont
+
+```
+
+Con la implementación de este algoritmo podemos encontrar el $\tau$ (i.e. el ATE) de Prospera sobre las tres distintas variables de objetivo definidas al inicio de nuestro análisis.
+```{r, echo=FALSE}
+captura<-"C:/Users/Lenovo/Downloads/amigos.png"
+```
+
+
+```{r, echo=FALSE, out.width="95%", fig.align="center"}
+knitr::include_graphics(captura)
+```
+
+Una vez estimados los tres modelos DDML LASSSO para las 3 variables de interés, corrimos la regresión lineal entre los residuales de las variables dependientes sobre los residuales de las estimaciones de tratamiento. Dado que construimos los residuales de la variable dependiente y de tratamiento que no son explicadas por las X´s, esta estimación nos arroja una relación causal y doblemente robusta. Los coeficientes de los residuales del tratamiento nos arrojarán el ATE estimado por los modelos. En los resultados para las variables son los siguientes:
+
+  - En la primera columna se muestra el ATE estimado para la carencia alimenticia. De esta manera, el DD LASSO estimó que las personas tratadas con el programa prospera tienen una probabilidad 0.4% menor de tener carencia alimenticia.
+  
+  - En la segunda columna se muestra el ATE para la informalidad. El DD LASSO en esta ocasión estimó que, en promedio, los beneficiarios de Prospera ven reducida la probabilidad de pertenecer a la informalidad en 1.1%.
+  
+  - Finalmente, en la tercera columna se muestra el resultado de la estimación para las personas con secundaria o menos. En esta ocasión el ATE sale muy pequeño y positivo. Esto puede deberse a que las personas 	que más reciben el Programa en 2018 son personas que tuvieron, en su juventud, una baja educación ya que el apoyo se otorga para que los hijos de la familia atiendan a la escuela. Quizá empleando datos tipo panel podemos ver el impacto educativo a más largo plazo, y medir el impacto del programa a un más largo plazo.
+
+## Variables Relevantes para cada especificación
+
+```{r, eval=FALSE}
+#Variables relevantes para cada carencia:
+
+#Alimentación:
+union<-inner_join(coefs_treat_comida[[1]],coefs_treat_comida[[2]], by="Nombres") 
+
+
+for(i in 3:4){
+  union<-inner_join(coefs_treat_comida[[i]],union, by="Nombres") 
+}
+
+
+union<-union %>% 
+  drop_na() 
+
+union<-cbind(union,promedio=rowMeans(union[,2:5],na.rm=T)) 
+
+union_alimentos<-union%>% 
+  select(Nombres, promedio)
+
+rm(union)
+
+
+#Informalidad:
+union<-inner_join(coefs_treat_informalidad[[1]],coefs_treat_informalidad[[2]], by="Nombres") 
+
+
+for(i in 3:4){
+  union<-inner_join(coefs_treat_informalidad[[i]],union, by="Nombres") 
+}
+
+
+union<-union %>% 
+  drop_na() 
+
+union<-cbind(union,promedio=rowMeans(union[,2:5],na.rm=T)) 
+
+union_alimentos<-union%>% 
+  select(Nombres, promedio)
+
+rm(union)
+
+
+#Menor Secundaria:
+union<-inner_join(coefs_treat_menor_sec[[1]],coefs_treat_menor_sec[[2]], by="Nombres") 
+
+
+for(i in 3:4){
+  union<-inner_join(coefs_treat_menor_sec[[i]],union, by="Nombres") 
+}
+
+
+union<-union %>% 
+  drop_na() 
+
+union<-cbind(union,promedio=rowMeans(union[,2:5],na.rm=T)) 
+
+union_alimentos<-union%>% 
+  select(Nombres, promedio)
+
+rm(union)
+```
+
+## Ahora las variables relevantes para **todas** las especificaciones
+
+```{r, echo=FALSE}
+union_ru<-"C:/Users/Lenovo/Downloads/union_todas.RDS"
+union_todas <- readRDS(union_ru)
+```
+
+```{r, eval=FALSE}
+union_todas<-inner_join(union_alimentos,union_informalidad, by="Nombres")
+union_todas<-inner_join(union_menor_sec,union_todas, by="Nombres")
+
+union_todas<-union_todas %>%  
+  filter(abs(promedio)>0.001, Nombres!="intercept") %>% 
+  arrange(-abs(promedio))
+union_todas <- union_todas %>% slice(3:86)
+```
+
+De los distintos modelos LASSO estimados, guardamos las variables que eran relevantes para explicar el efecto del programa Prospera sobre las variables dependientes de interés. Notamos que muchas variables de interés se repetían, tanto entre distintos modelos que explicaban la relación para la misma variable dependiente, como entre modelos estimados para distintas variables dependientes. Identificamos las variables relevantes que se repetían para todos los distintos modelos y para todas las distintas variables de interés. Luego promediamos el valor de los coeficientes estimados, para cada una de estas variables. Ordenando de mayor a menor las variables que resultaron más relevantes para estimar el efecto de tratamiento, es decir, que tenían un promedio de los coeficientes más grandes en valor absoluto, obtuvimos la siguiente lista:
+
+```{r}
+kable(union_todas, align = c("c", "c", "c"), caption="Variables relevantes para los beneficiarios del Programa Prospera bajo todas las carencias.",digits=3, col.names = linebreak(c("Variable", "Prom. Alimentos", "Prom. Informalidad","Prom. Menor Secundaria")))%>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  footnote(general = "Elaboración propia con datos de ENIGH (2018).",threeparttable = T, footnote_as_chunk = T) %>%
+  row_spec(0, bold = T)
+```
+Estas variables nos arrojan algunos resultados interesantes. Por un lado, la variable `ing_tri_tot_missing` que señala a las personas que no reportaron su ingreso trimestral total, resulta importante para explicar la relación con Prospera. Puede ser que estas personas tengan muy bajos ingresos trimestrales o no quisieran compartir esa información, lo que podría ser tanto por miedo para mantener los beneficios del programa, por miedo a ser robados o por vergüenza de tener un ingreso bajo. Otra variable que resultó relevante, que ya habíamos explorado al inicio de esta investigación, es la variable `sexo_1` (dummy que indica si el individuo es hombre), y tiene una relación negativa con el tratamiento. Es decir, los hombres tienen en promedio una menor probabilidad de obtener el programa. Una variable que resultó sorprendente que fuera relevante es `residencia_12`, una variable que indica si el individuo reside en el estado de Guerrero. El hecho de vivir en esta entidad se relaciona positivamente con el hecho de recibir los beneficios del programa, lo que es razonable por los elevados niveles de pobreza que tiene esa entidad. Esto es consistente porque la variable `residencia_9`, que indica si la persona vive en el Distrito Federal, tiene una relación negativa con el tratamiento. Otra relación curiosa es que la variable `recib_tvd_1`, que indica que el individuo recibió televisor digital de parte del Gobierno Federal, tiene una relación positiva y elevada con el programa, ya que puede ser el caso que las personas que recibieron televisor fueron las más vulnerables. Finalmente, también es consistente que las personas que respondieron que no tenían servicio médico de parte de su trabajo (`medtrab_7`) tienen una relación positiva con la recepción del programa.
+
+# Implementación con Causal Forest
+
+¿Qué sucede si queremos estimar relaciones altamente no lineales? una alternativa son los Causal Trees. Vamos dividiendo la muestra, partiendo de las variables más significativas. Básicamente la mecánica es parecida al DDML: partes tus datos en un conjunto para entrenar y otro para estimar, hacemos algo similar a "cross validation" y predecimos en la base para estimar.
+
+Nuestro objetivo es que en cada nueva rama logremos un mayor poder explicativo, pero que dentro de cada rama las poblaciones sean balanceadas. Eliminamos las ramas que sean redundantes, y estimamos el efecto del árbol con la base de estimación.
+
+Un causal forest es estimar distintos árboles partiendo de selecciones aleatorias de la muestra, y nos quedamos con el efecto promedio. 
+
+```{r, eval=FALSE}
+# Modelo 1
+# Vector con el outcome
+Y <-  data_entrenamiento %>% 
+  pull(informal)
+
+# Matriz con las variables explicativas
+# X <- sparse.model.matrix(~.+0,
+#                          data = data_entrenamiento %>% 
+#                            select(-informal, 
+#                                   -preocupacion_comida, -menor_secundaria, 
+#                                   -prospera))
+X <- data_entrenamiento %>% 
+  select(-informal, 
+         -preocupacion_comida, -menor_secundaria, 
+         -prospera, -tratamiento) %>% 
+  as.matrix()
+
+# Vector con los tratamientos
+W <- data_entrenamiento %>% 
+  pull(prospera)
+
+# Corremos el causal forest
+forest <- causal_forest(X = X, Y = Y, W = W, num.trees = 750)
+
+# Guardar el causal forest para no tener que volverlo a correr
+saveRDS(forest, "./causal_forest_1.rds")
+  
+# Modelo 2
+# Vector con el outcome
+Y <-  data_entrenamiento %>% 
+  pull(preocupacion_comida)
+
+# Corremos el causal forest
+forest <- causal_forest(X = X, Y = Y, W = W, num.trees = 750)
+
+# Guardar el causal forest para no tener que volverlo a correr
+saveRDS(forest, "./causal_forest_2.rds")
+
+# Modelo 3
+# Vector con el outcome
+Y <-  data_entrenamiento %>% 
+  pull(menor_secundaria)
+
+# Corremos el causal forest
+forest <- causal_forest(X = X, Y = Y, W = W, num.trees = 750)
+
+# Guardar el causal forest para no tener que volverlo a correr
+saveRDS(forest, "./causal_forest_3.rds")
+
+######### Analisis de predicciones #############
+# Leer modelos de Causal forest
+forest_1 <- readRDS("causal_forest_1.rds")
+forest_2 <- readRDS("causal_forest_2.rds")
+forest_3 <- readRDS("causal_forest_3.rds")
+
+
+ate1 <- average_treatment_effect(forest_1,
+                                target.sample = "all", method = "AIPW")
+
+ate2 <- average_treatment_effect(forest_2,
+                                 target.sample = "all", method = "AIPW")
+
+ate3 <- average_treatment_effect(forest_3,
+                                 target.sample = "all", method = "AIPW")
+
+X_val <- data_validacion %>% 
+  select(-informal, 
+         -preocupacion_comida, -menor_secundaria, 
+         -prospera, -tratamiento) %>% 
+  as.matrix()
+
+data_validacion$ate1 <- predict(forest_1, X_val)$predictions
+data_validacion$ate2 <- predict(forest_2, X_val)$predictions
+data_validacion$ate3 <- predict(forest_3, X_val)$predictions
+```
+
+## Evaluación de impacto con Causal Forest
+
+```{r, eval=FALSE, echo=FALSE}
+plot_ate_informal <- ggplot(data = data_validacion, aes(x = ate1)) +
+  geom_histogram(aes(y = ..density..), color = "black", fill = "navyblue") +
+  geom_vline(aes(xintercept = mean(data_validacion$ate1), 
+                 color = label_ate1), linetype ="dashed") +
+  scale_color_manual(name = "", values = c("red")) +
+  labs(x = "ATE Informalidad", y = "Densidad") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+plot_ate_preocupacion <- ggplot(data = data_validacion, aes(x = ate2)) +
+  geom_histogram(aes(y = ..density..), color = "black", fill = "navyblue") +
+  geom_vline(aes(xintercept = mean(data_validacion$ate2), 
+                 color = label_ate2), linetype ="dashed") +
+  scale_color_manual(name = "", values = c("red")) +
+  labs(x = "ATE Alimentación", y = "Densidad") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+plot_ate_edu <- ggplot(data = data_validacion, aes(x = ate3)) +
+  geom_histogram(aes(y = ..density..), color = "black", fill = "navyblue") +
+  geom_vline(aes(xintercept = mean(data_validacion$ate3), 
+                 color = label_ate3), linetype ="dashed") +
+  scale_color_manual(name = "", values = c("red")) +
+  labs(x = "ATE Educación", y = "Densidad") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r, echo=FALSE}
+graphate1_ru<-"C:/Users/Lenovo/Downloads/graphate1.png"
+graphate2_ru<-"C:/Users/Lenovo/Downloads/graphate2.png"
+graphate3_ru<-"C:/Users/Lenovo/Downloads/graphate3.png"
+
+decils1_ru<-"C:/Users/Lenovo/Downloads/decils1.png"
+decils2_ru<-"C:/Users/Lenovo/Downloads/decils2.png"
+decils3_ru<-"C:/Users/Lenovo/Downloads/decils3.png"
+
+ate1_ru<-"C:/Users/Lenovo/Downloads/ate_informal.png"
+ate2_ru<-"C:/Users/Lenovo/Downloads/ate_preocupacion.png"
+ate3_ru<-"C:/Users/Lenovo/Downloads/ate_edu.png"
+
+ate1_balance_ru<-"C:/Users/Lenovo/Downloads/ate1_balance.RDS"
+ate1_balance <- readRDS(ate1_balance_ru)
+
+ate2_balance_ru<-"C:/Users/Lenovo/Downloads/ate2_balance.RDS"
+ate2_balance <- readRDS(ate2_balance_ru)
+
+ate3_balance_ru<-"C:/Users/Lenovo/Downloads/ate3_balance.RDS"
+ate3_balance <- readRDS(ate3_balance_ru)
+```
+
+# Tabla y Gráfica para Informalidad
+
+Las variables más importantes son la edad, el gasto en alimentos y el grado de primaria aprobado por el miembro del hogar. En el siguiente espacio se muestra una tabla de balance. La segunda columna nos indica los valores promedios de las
+características para los individuos que tienen un gran beneficio de prospera y los que no en la primera columna, en particular el 20\% más beneficiado y el 20\% menos beneficiado. Podemos notar que las variables más importantes difieren en cada grupo. Por lo tanto, se debería de hacer un enfoque en apoyar a los adultos de mayor edad, que tienen un menor gasto en alimentos y que no han completado la primaria, esto si se quiere utilizar el programa como un método para disminuir la informalidad en el país. 
+
+```{r echo=FALSE}
+kable(ate1_balance,align = c("c", "c", "c", "c"), caption="Variables relevantes para los beneficiarios del Programa Prospera",digits=4, col.names = linebreak(c("Variable", "Bottom 20%", "Top 20%","p value")))%>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position="center")%>%
+  row_spec(0, bold = T)
+```
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(graphate1_ru)
+```
+
+# Tabla y Gráfica para Alimentación
+
+Ahora, nos enfocaremos en el impacto del programa Prospera sobre las limitaciones alimenticias que enfrentan los hogares. De igual forma que para la variable de informalidad, la edad es importante, en este caso se debería de beneficiar a los que tienen una menor edad. También se debe de apoyar, para sacar el máximo beneficio del programa, a aquellos que tienen una gran cantidad de hijos y un grado menor a tercero de primaria.
+
+```{r echo=FALSE}
+kable(ate2_balance,align = c("c", "c", "c", "c"), caption="Variables relevantes para los beneficiarios del Programa Prospera",digits=4, col.names = linebreak(c("Variable", "Bottom 20%", "Top 20%","p value")))%>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position="center")%>%
+  row_spec(0, bold = T)
+```
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(graphate2_ru)
+```
+
+# Tabla y Gráfica para Educación - Secundaria
+
+Por último, también se analizó el impacto del programa Prospera sobre el nivel educativo, en particular si el individuo terminó al menos la secundaria. Lo que encontramos es que Prospera tiene un impacto negativo contrario a lo que se esperaría, pues los beneficiados de Prospera tuvieron una menor probabilidad de terminar la secundaria según las estimaciones del modelo. Esto puede ser a causa de que los individuos fueron beneficiados cuando ya eran adultos y por lo tanto no pudieron cambiar su nivel educativo.
+
+```{r echo=FALSE}
+kable(ate3_balance,align = c("c", "c", "c", "c"), caption="Variables relevantes para los beneficiarios del Programa Prospera",digits=4, col.names = linebreak(c("Variable", "Bottom 20%", "Top 20%","p value")))%>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position="center")%>%
+  row_spec(0, bold = T)
+```
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(graphate3_ru)
+```
+
+```{r, eval=FALSE}
+data_validacion <- data_validacion %>% 
+  mutate(decil_informal = ntile(ate1, 10), decil_alim = ntile(ate2, 10),
+         decil_secu = ntile(ate3, 10))
+
+itt_ate1 <- impact_eval(data_validacion, 
+                        endogenous_vars = "informal", 
+                        treatment = "prospera", 
+                        heterogenous_vars = "decil_informal")$informal_decil_informal
+
+itt_ate1 <- itt_ate1 %>% 
+  dplyr::filter(term != "(Intercept)") %>% 
+  mutate(decil_informal = factor(decil_informal, 
+                                 levels = c("1","2","3","4",
+                                                      "5","6","7","8","9","10")))
+
+decils_ate1 <- data_validacion %>% 
+  group_by(decil_informal) %>%
+  summarise(media_informal = mean(ate1)) %>% 
+  mutate(decil_informal = factor(decil_informal, levels = c("1","2","3","4",
+                                                    "5","6","7","8","9","10")))
+
+decils_ate1 <- decils_ate1 %>% 
+  left_join(itt_ate1 %>% select(decil_informal, estimate), 
+            by = "decil_informal")
+
+decils_ate1 <- decils_ate1 %>% 
+  pivot_longer(cols = c(media_informal, estimate))
+ggplot(decils_ate1, aes(x = decil_informal, y = value, color = name)) +
+  geom_line() +
+  geom_point(shape = 21, size = 2) +
+  theme_bw()
+```
+
+Dados los resultados mencionados en anteriores párrafos, recomendamos que el programa, dada una cantidad fija de apoyo, debería de empezar a dar el apoyo a hogares que tienen individuos con una edad alta (aproximadamente de 40 años), que tiene un gasto alimenticio menor a los \$3500 pesos, y que tengan un número alto de hijos o dependientes económicos. 
+
+```{r, echo=FALSE, eval=FALSE}
+#### Importancia de variables
+ate1_var_importance <- as.data.frame(variable_importance(forest_1)) %>% 
+  rename(importancia = V1)
+ate1_var_importance$var <- colnames(X)
+
+# ATE 1
+ate1_var_importance <- ate_var_importance %>% 
+  arrange(-importancia) 
+
+# Informalidad
+# Las variables más importantes fueron tipo contrato, ingreso trimestral total y
+# horas trabajadas
+
+# ATE 2
+ate2_var_importance <- as.data.frame(variable_importance(forest_2)) %>% 
+  rename(importancia = V1) %>% 
+  mutate(var = colnames(X)) %>% 
+  arrange(-importancia)
+
+# Alimentación
+# las variables más importante fueron el número de hijos vivos, horas dedicadas
+#al quehacer, hijos muertos.
+
+# ATE 3
+ate3_var_importance <- as.data.frame(variable_importance(forest_3)) %>% 
+  rename(importancia = V1) %>% 
+  mutate(var = colnames(X)) %>% 
+  arrange(-importancia)
+# Las más importantes fueron hijos sobrevivientes, edad y horas dedicadas al 
+# quehacer
+```
+# Distribución del CATE - Causal Forest
+
+## Distribución CATE - Informalidad
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(ate1_ru)
+```
+
+## Distribución CATE - Alimentación
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(ate2_ru)
+```
+
+## Distribución CATE - Educación 
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(ate3_ru)
+```
+
+# Conclusión
+
+La evaluación de impacto del programa Prospera comenzó por analizar estadísticas descriptivas. De estas estadísticas se puede observar que existe un gran porcentaje de la población con al menos una de las carencias analizadas (alimenticias, educativas y laborales). De igual forma, se puede observar que el programa Prospera beneficia a aquellos individuos con más carencias, en particular a los grupos vulnerables (las mujeres y grupos indígenas).
+
+El siguiente paso para evaluar el programa fue utilizar dos modelos de causal machine learning. El primer modelo que se usó fue un modelo Double Debiased Machine Learning, de este modelo se obtuvo el Average Treatment Effect para las tres variables de interés relevantes y también se obtuvieron las variables que los modelos Lasso identificaron como determinantes para explicar el tratamiento, es decir, a quienes recibieron los beneficios del programa Prospera.
+
+El segundo modelo que se utilizó fue un Causal Forest. De este modelo se encontró que se debe dar prioridad a aquellos hogares que tienen un gasto en alimentación bajo, que tienen un alto número de dependientes económicos y con edades promedio altas.
+
+Los resultados de ambos modelos nos permite concluir que el focalizar el programa a aquellos hogares con al menos dos carencias tendría grandes beneficios. Dada la escasez de recursos del gobierno a programas sociales recomendamos focalizar los gastos en las personas que más lo necesitan. La restricción del tamaño del programa va a depender del presupuesto asignado. Primero, se debe asignar los recursos a aquellos individuos con carencias y que compartan las características encontradas en el estudio por los dos algoritmos. La focalización, es entonces primordial para el uso eficiente de los recursos del programa. Posteriormente se deberá continuar con la asignación de beneficios a las personas que probablemente tengan menos carencias de forma escalonada hasta agotar el presupuesto asignado ya que se corroboró su impacto positivo para reducir las carencias de las personas.
+
+
+# Anexo - Validación del Modelo Causal Forest
+
+Dado que no existe un ATE observado, se tiene que realizar la siguiente estrategia: 1) Dividir por deciles con respecto al ATE predicho por el Causal Forest, 2) Correr una regresión a nivel decil, 3) Sacar el promedio del ATE predicho por el Causal Forest a nivel decil, 4) Comparar si la monotonía en ambas estimaciones es similar. A pesar de seguir todos los pasos recomendados para la validación, los resultados no van en la dirección esperada en algunos casos. 
+
+## Probando Monotonía en Informalidad
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(decils1_ru)
+```
+
+## Probando Monotonía en Alimentación
+
+```{r, eval=FALSE}
+## Para ATE 2
+itt_ate2 <- impact_eval(data_validacion, 
+                        endogenous_vars = "preocupacion_comida", 
+                        treatment = "prospera", 
+                        heterogenous_vars = "decil_alim")$preocupacion_comida_decil_alim
+
+itt_ate2 <- itt_ate2 %>% 
+  dplyr::filter(term != "(Intercept)") %>% 
+  mutate(decil_alim = factor(decil_alim, 
+                                 levels = c("1","2","3","4",
+                                            "5","6","7","8","9","10")))
+
+decils_ate2 <- data_validacion %>% 
+  group_by(decil_alim) %>%
+  summarise(media_alim = mean(ate2)) %>% 
+  mutate(decil_alim = factor(decil_alim, levels = c("1","2","3","4",
+                                                            "5","6","7","8","9","10")))
+
+decils_ate2 <- decils_ate2 %>% 
+  left_join(itt_ate2 %>% select(decil_alim, estimate), 
+            by = "decil_alim")
+
+decils_ate2 <- decils_ate2 %>% 
+  pivot_longer(cols = c(media_alim, estimate))
+
+ggplot(decils_ate2, aes(x = decil_alim, y = value, color = name)) +
+  geom_line() +
+  geom_point(shape = 21, size = 2) +
+  theme_bw()
+```
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(decils2_ru)
+```
+
+## Probando Monotonía en Educación
+
+```{r, eval=FALSE}
+itt_ate3 <- impact_eval(data_validacion, 
+                        endogenous_vars = "menor_secundaria", 
+                        treatment = "prospera", 
+                        heterogenous_vars = "decil_secu")$menor_secundaria_decil_secu
+
+itt_ate3 <- itt_ate3 %>% 
+  dplyr::filter(term != "(Intercept)") %>% 
+  mutate(decil_secu = factor(decil_secu, 
+                             levels = c("1","2","3","4",
+                                        "5","6","7","8","9","10")))
+
+decils_ate3 <- data_validacion %>% 
+  group_by(decil_secu) %>%
+  summarise(media_secu = mean(ate3)) %>% 
+  mutate(decil_secu = factor(decil_secu, levels = c("1","2","3","4",
+                                                    "5","6","7","8","9","10")))
+
+decils_ate3 <- decils_ate3 %>% 
+  left_join(itt_ate3 %>% select(decil_secu, estimate), 
+            by = "decil_secu")
+
+decils_ate3 <- decils_ate3 %>% 
+  pivot_longer(cols = c(media_secu, estimate))
+
+ggplot(decils_ate3, aes(x = decil_secu, y = value, color = name)) +
+  geom_line() +
+  geom_point(shape = 21, size = 2) +
+  theme_bw()
+```
+
+```{r, echo=FALSE, out.width="65%", fig.align="center"}
+knitr::include_graphics(decils3_ru)
+```
+
+
+
